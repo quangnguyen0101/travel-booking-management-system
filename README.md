@@ -130,12 +130,12 @@ Thông báo lỗi bắt đầu bằng tên trường bị sai, ví dụ `CHECK_I
 - Trigger đọc lại dữ liệu gốc từ bảng, không lấy giá trị có sẵn trên dòng `inserted`.
 - Xử lý đủ INSERT/UPDATE/DELETE `REVIEW`, đổi `REVIEW.BOOKING_ID`, và đổi `BOOKING.ACCOMMODATION_ID`.
 - `TOTAL_AMOUNT` phủ INSERT/UPDATE `BOOKING`, INSERT/UPDATE/DELETE `BOOKING_ROOM_TYPE`, `BOOKING_VOUCHER`, và UPDATE `VOUCHER.DISCOUNT_VALUE`; ghi trực tiếp cột dẫn xuất sẽ bị trigger tính lại.
-- ⚠ `04_trigger_rangbuoc.sql` có trigger `INSTEAD OF INSERT, UPDATE` trên `BOOKING`, nó **nuốt mọi UPDATE** vào `BOOKING` nên `TOTAL_AMOUNT` sẽ đứng yên 0. Nếu dùng cả `04`, phải thêm `b.TOTAL_AMOUNT = i.TOTAL_AMOUNT` vào câu `UPDATE` trong `trg_Booking_NoOverlap` (file của người khác — báo tác giả sửa).
+- Đã chạy thử cùng `04_trigger_rangbuoc.sql`: trigger `INSTEAD OF` trên `BOOKING` **không** chặn `UPDATE` phát sinh từ trigger `AFTER`, nên `TOTAL_AMOUNT` vẫn cập nhật đúng (không cần sửa `04`).
 - File chạy lại được: cột/ràng buộc có kiểm tra tồn tại, trigger drop rồi tạo lại, dữ liệu cũ được backfill.
 
 ## Kết quả chạy thử của repo này
 
-Chạy trên SQL Server 2025 (`mcr.microsoft.com/mssql/server:2025-latest`) trong Docker, DB tạo mới hoàn toàn:
+Chạy trên SQL Server 2025 (`mcr.microsoft.com/mssql/server:2025-latest`) trong Docker, DB tạo mới hoàn toàn. Riêng 2 dòng `05_*` được chạy lại trên SQL Server 2022 Express (máy thành viên), DB đã có sẵn dữ liệu và đã cài `04`:
 
 | Bước | Kết quả |
 | --- | --- |
@@ -147,7 +147,7 @@ Chạy trên SQL Server 2025 (`mcr.microsoft.com/mssql/server:2025-latest`) tron
 | `2.1-testcases.sql` | ✅ 16/16 PASS |
 | `04_trigger_rangbuoc.sql` | ✅ 5/5 test riêng PASS, nhưng ⚠️ làm hỏng `sp_Booking_Insert` — xem [issue #1](https://github.com/quangnguyen0101/travel-booking-management-system/issues/1) |
 | `05_trigger_danxuat.sql` + `05_trigger_danxuat-testcases.sql` | ✅ 13/13 PASS, kể cả khi đã cài `04` |
-| `05_total_amount-testcases.sql` | ⬜ Chưa chạy trên máy này — cần 11/11 PASS |
+| `05_total_amount-testcases.sql` | ✅ 11/11 PASS (chạy cùng `04`) |
 
 ## Theo dõi lỗi
 

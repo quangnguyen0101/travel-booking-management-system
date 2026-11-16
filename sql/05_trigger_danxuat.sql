@@ -320,10 +320,8 @@ GO
    dùng BOOKING_ROOM_TYPE.ROOM_PRICE_AT_BOOKING (giá chốt lúc đặt) và
    BOOKING_VOUCHER -> VOUCHER. Đổi ROOM_RATE.UNIT_PRICE không hồi tố đơn cũ.
 
-   ⚠ NẾU ĐÃ CÀI 04_trigger_rangbuoc.sql: trigger INSTEAD OF INSERT, UPDATE
-   trên BOOKING nuốt mọi UPDATE vào BOOKING, nên cột này sẽ đứng yên 0.
-   Cần thêm dòng "b.TOTAL_AMOUNT = i.TOTAL_AMOUNT" vào câu UPDATE trong
-   trg_Booking_NoOverlap (file của người khác — báo tác giả việc 1/2.1 sửa).
+   ⚠ ĐÃ KIỂM CHỨNG với 04_trigger_rangbuoc.sql: trigger INSTEAD OF trên BOOKING
+   không chặn UPDATE phát sinh từ trigger AFTER, nên cột này vẫn cập nhật đúng.
    ============================================================================ */
 
 IF COL_LENGTH(N'dbo.BOOKING', N'TOTAL_AMOUNT') IS NULL
@@ -348,15 +346,20 @@ AS
 SELECT b.BOOKING_ID,
        CAST(
            CASE
-               WHEN ISNULL(v.DISCOUNT_VALUE, 0) >= ISNULL(rt.ROOM_AMOUNT, 0) THEN 0
-               ELSE ISNULL(rt.ROOM_AMOUNT, 0) - ISNULL(v.DISCOUNT_VALUE, 0)
+               WHEN ISNULL(d.DISCOUNT_VALUE, 0)
+                    >= ISNULL(rt.AMOUNT_PER_NIGHT, 0)
+                       * DATEDIFF(DAY, b.CHECK_IN_DATE, b.CHECK_OUT_DATE)
+                   THEN 0
+               ELSE ISNULL(rt.AMOUNT_PER_NIGHT, 0)
+                    * DATEDIFF(DAY, b.CHECK_IN_DATE, b.CHECK_OUT_DATE)
+                    - ISNULL(d.DISCOUNT_VALUE, 0)
            END
            AS DECIMAL(18,2)) AS TOTAL_AMOUNT
 FROM dbo.BOOKING AS b
+-- Số đêm phải nằm ngoài SUM: SQL Server cấm outer reference trong aggregate
+-- (Msg 8124) nếu biểu thức còn cột khác.
 OUTER APPLY (
-    SELECT SUM(CAST(DATEDIFF(DAY, b.CHECK_IN_DATE, b.CHECK_OUT_DATE) AS DECIMAL(18,2))
-               * brt.ROOM_PRICE_AT_BOOKING
-               * brt.RESERVED_QUANTITY) AS ROOM_AMOUNT
+    SELECT SUM(brt.ROOM_PRICE_AT_BOOKING * brt.RESERVED_QUANTITY) AS AMOUNT_PER_NIGHT
     FROM dbo.BOOKING_ROOM_TYPE AS brt
     WHERE brt.BOOKING_ID = b.BOOKING_ID
 ) AS rt
@@ -365,7 +368,7 @@ OUTER APPLY (
     FROM dbo.BOOKING_VOUCHER AS bv
     JOIN dbo.VOUCHER AS v ON v.VOUCHER_CODE = bv.VOUCHER_CODE
     WHERE bv.BOOKING_ID = b.BOOKING_ID
-) AS v;
+) AS d;
 GO
 
 /* ----------------------------------------------------------------------------

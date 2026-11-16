@@ -8,9 +8,8 @@
  Toàn bộ test nằm trong một transaction và ROLLBACK ở cuối, nên dữ liệu mẫu
  của 02_seed.sql không thay đổi. Có thể chạy lại nhiều lần.
 
- Điều kiện: DB đã nạp 01_schema, 02_seed, 05_trigger_danxuat (không cần 04).
- Nếu đã cài 04_trigger_rangbuoc.sql, phải vá trg_Booking_NoOverlap để nó
- chuyển tiếp TOTAL_AMOUNT, xem cảnh báo in ra khi chạy file này.
+ Điều kiện: DB đã nạp 01_schema, 02_seed, 05_trigger_danxuat. Chạy được cả khi
+ đã cài 04_trigger_rangbuoc.sql (đã kiểm chứng).
 
  Các case:
    1. Đơn mới chưa có hạng phòng -> TOTAL_AMOUNT = 0.
@@ -44,13 +43,6 @@ JOIN dbo.BOOKING AS b ON b.BOOKING_ID = brt.BOOKING_ID
 WHERE b.BOOKING_CODE LIKE 'BK_TEST_TA_%';
 DELETE FROM dbo.BOOKING WHERE BOOKING_CODE LIKE 'BK_TEST_TA_%';
 DELETE FROM dbo.VOUCHER WHERE VOUCHER_CODE = 'VC_TEST_TA_300K';
-GO
-
--- 04 có INSTEAD OF INSERT, UPDATE trên BOOKING: nó nuốt mọi UPDATE vào BOOKING
--- nên trigger TOTAL_AMOUNT không ghi được gì.
-IF EXISTS (SELECT 1 FROM sys.triggers
-           WHERE name = 'trg_Booking_NoOverlap' AND is_instead_of_trigger = 1)
-    PRINT N'CẢNH BÁO: đã cài 04_trigger_rangbuoc.sql. Cần thêm "b.TOTAL_AMOUNT = i.TOTAL_AMOUNT" vào UPDATE trong trg_Booking_NoOverlap, nếu không các case 2-9 sẽ FAIL.';
 GO
 
 DECLARE @log TABLE (
