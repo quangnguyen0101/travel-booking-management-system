@@ -1,11 +1,11 @@
-# btl2-hcsdl — BTL2 Hệ CSDL, Nhóm 5
+# travel-booking-management-system — BTL2 Hệ CSDL, Nhóm 5
 
 Hệ thống quản lý đặt phòng du lịch (tham khảo Booking.com), tiếp nối lược đồ BTL1.
 
 - **DBMS:** MS SQL Server (T-SQL)
 - **Database:** `BTL2_Booking_Nhom5`
 - **Số bảng:** 36
-- **Repo:** `btl2-hcsdl` (theo quy ước tại `docs/de-bai/BTL2 - Phân công công việc.md`, mục 4)
+- **Repo:** `travel-booking-management-system` (theo quy ước tại `docs/de-bai/BTL2 - Phân công công việc.md`, mục 4)
 
 ## Trạng thái các đầu việc
 
@@ -14,7 +14,7 @@ Hệ thống quản lý đặt phòng du lịch (tham khảo Booking.com), tiế
 | 1 | DDL toàn bộ bảng + ràng buộc (1.1) | `sql/01_schema.sql` | Đỗ Lê Chí Kiên | ✅ Đã tích hợp |
 | 1 | Dữ liệu mẫu ≥ 5 dòng/bảng (1.2) | `sql/02_seed.sql` | Lê Thế Nguyên | ✅ Đã tích hợp |
 | 2 | 3 thủ tục CRUD trên `BOOKING` (2.1) | `sql/03_crud.sql` | Phạm Nhật Quang | ✅ Đã tích hợp |
-| 3 | Trigger ràng buộc nghiệp vụ (2.2.1) | `sql/04_trigger_rangbuoc.sql` | Lê Thế Nguyên | ⚠️ Có, nhưng **xung đột tích hợp** — xem [issue #1](https://github.com/quangnguyen0101/btl2-hcsdl/issues/1) |
+| 3 | Trigger ràng buộc nghiệp vụ (2.2.1) | `sql/04_trigger_rangbuoc.sql` | Lê Thế Nguyên | ⚠️ Có, nhưng **xung đột tích hợp** — xem [issue #1](https://github.com/quangnguyen0101/travel-booking-management-system/issues/1) |
 | 4 | Trigger thuộc tính dẫn xuất (2.2.2) | `sql/05_trigger_danxuat.sql` | Nguyễn Trương Đăng Quang | ⬜ Chưa nộp |
 | 5 | 2 thủ tục truy vấn (2.3) | `sql/06_query_procs.sql` | Đỗ Lê Chí Kiên | ⬜ Chưa nộp |
 | 6 | 2 hàm (2.4) | `sql/07_functions.sql` | Phan Anh Khoa | ⬜ Chưa nộp |
@@ -25,7 +25,7 @@ Hệ thống quản lý đặt phòng du lịch (tham khảo Booking.com), tiế
 ## Cấu trúc thư mục
 
 ```text
-btl2-hcsdl/
+travel-booking-management-system/
 ├─ README.md
 ├─ sql/                  # Script chạy trên SQL Server, theo đúng thứ tự số
 │  ├─ 01_schema.sql      # Tạo DB + 36 bảng + PK/FK/UNIQUE/CHECK/DEFAULT
@@ -57,7 +57,7 @@ Mở lần lượt từng file bằng **File → Open**, bấm F5 theo đúng th
 4. `tests/02_test_constraints.sql` — thử dữ liệu vi phạm CHECK/FK/UNIQUE
 5. `sql/03_crud.sql`
 6. `tests/2.1-testcases.sql` — xem kết quả ở tab **Messages**, cần 16/16 `[PASS]`
-7. `sql/04_trigger_rangbuoc.sql` — **chỉ chạy sau khi xử lý [issue #1](https://github.com/quangnguyen0101/btl2-hcsdl/issues/1)**
+7. `sql/04_trigger_rangbuoc.sql` — **chỉ chạy sau khi xử lý [issue #1](https://github.com/quangnguyen0101/travel-booking-management-system/issues/1)**
 
 `01_schema.sql` và `02_seed.sql` đều có chốt an toàn: nếu database đã có bảng/dữ liệu thì dừng, không ghi đè.
 
@@ -121,11 +121,11 @@ Chạy trên SQL Server 2025 (`mcr.microsoft.com/mssql/server:2025-latest`) tron
 | `02_test_constraints.sql` | ✅ 10/10 ca vi phạm bị chặn |
 | `03_crud.sql` | ✅ Tạo 4 thủ tục |
 | `2.1-testcases.sql` | ✅ 16/16 PASS |
-| `04_trigger_rangbuoc.sql` | ✅ 5/5 test riêng PASS, nhưng ⚠️ làm hỏng `sp_Booking_Insert` — xem [issue #1](https://github.com/quangnguyen0101/btl2-hcsdl/issues/1) |
+| `04_trigger_rangbuoc.sql` | ✅ 5/5 test riêng PASS, nhưng ⚠️ làm hỏng `sp_Booking_Insert` — xem [issue #1](https://github.com/quangnguyen0101/travel-booking-management-system/issues/1) |
 
 ## Theo dõi lỗi
 
-Lỗi tích hợp và việc cần chốt được theo dõi tại [Issues](https://github.com/quangnguyen0101/btl2-hcsdl/issues).
+Lỗi tích hợp và việc cần chốt được theo dõi tại [Issues](https://github.com/quangnguyen0101/travel-booking-management-system/issues).
 
 ## Phân công
 
