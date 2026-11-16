@@ -1,0 +1,48 @@
+﻿PHẦN 2.3 - HAI THỦ TỤC TRUY VẤN
+Đỗ Lê Chí Kiên - Nhóm 5
+
+1. Cách chạy
+- Dùng database BTL2_Booking_Nhom5 đã có schema và dữ liệu mẫu của nhóm.
+- Chạy sql/06_query_procs.sql để tạo hoặc cập nhật hai thủ tục.
+- Chạy tests/06_query_procs_testcases.sql, xem các bảng Results và lưu ảnh.
+- Chép hai file vào sql/ và tests/ tương ứng của repo khi tích hợp.
+- Không chạy lại schema hoặc xóa database chỉ để cài hai thủ tục này.
+
+2. sp_Booking_List
+- Tham số: @p_keyword, @p_status, @p_from, @p_to, @p_sort.
+- NULL bỏ qua bộ lọc; từ khóa/trạng thái rỗng cũng bỏ qua.
+- Tìm theo tên khách, hạng phòng, cơ sở hoặc mã booking.
+- Khoảng ngày lọc ngày nhận phòng, gồm hai đầu mút.
+- Sort: check_in, total_amount, guest_name; tăng dần. Sort khác dùng check_in.
+- Mỗi booking chỉ một dòng, kể cả khi có nhiều hạng phòng.
+- TOTAL_AMOUNT là tiền phòng của đơn: số đêm nhân tổng (giá chốt x số phòng),
+  trừ voucher theo số tiền, tối thiểu bằng 0. Chưa có chi tiết thì để NULL.
+- Tổng tiền chưa gồm phụ thu trẻ em, thuế/phí và giảm giá Genius.
+- Vẫn tính voucher USED đã gắn với đơn. Mức giảm lấy từ VOUCHER nên tổng tiền
+  sẽ thay đổi nếu sửa DISCOUNT_VALUE. Muốn giữ lịch sử cần lưu mức giảm lúc đặt.
+
+3. sp_Revenue_By_Accommodation
+- Tham số: @p_city, @p_from, @p_to, @p_min_revenue; NULL không lọc.
+- Chỉ lấy PAYMENT_STATUS = PAID, lọc theo PAYMENT_DATE (gồm toàn bộ ngày cuối).
+- Gom nhóm theo cơ sở và loại tiền, trả SUM, COUNT booking và AVG payment.
+- HAVING lọc tổng doanh thu tối thiểu. Cơ sở không có PAID không xuất hiện.
+- Doanh thu tính từ các khoản PAID, chưa đối trừ riêng phí hủy và tiền hoàn.
+- Không kết bảng chi tiết phòng trong tổng doanh thu để tránh nhân đôi PAYMENT.
+- Khoảng ngày ngược trả kết quả rỗng. Các thủ tục chỉ SELECT, không sửa dữ liệu.
+
+4. Phần 2.2.2
+- File 05_trigger_danxuat.sql tính điểm đánh giá.
+- Phần đó bổ sung OVERALL_SCORE, AVERAGE_RATING và REVIEW_COUNT;
+  không bổ sung BOOKING.TOTAL_AMOUNT. Hai thủ tục không phụ thuộc các cột rating.
+
+5. Kết quả kiểm tra
+- Chạy file test trong SSMS, xem từng kết quả ở tab Results.
+- Danh sách đầy đủ có 12 booking; lọc COMPLETED có 5 dòng; tìm Deluxe có 3 dòng.
+- Sắp xếp theo tiền tăng từ 2.350.000 đến 8.250.000 VND.
+- Tổng PAID là 36.400.000 VND, khớp tổng doanh thu các cơ sở.
+- Lọc TP.HCM có một cơ sở, doanh thu 4.900.000 VND.
+- Lọc tháng 9/2026 và doanh thu từ 3 triệu có 3 cơ sở:
+  8.250.000; 6.100.000; 4.900.000 VND.
+- Từ khóa/thành phố không tồn tại và khoảng ngày ngược trả kết quả rỗng.
+- Ảnh kết quả nằm trong evidence/.
+- Cần thử thêm: một booking đặt nhiều hạng phòng, nhiều loại tiền và đơn chưa có chi tiết.
