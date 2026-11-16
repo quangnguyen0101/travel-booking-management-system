@@ -45,4 +45,6 @@
   8.250.000; 6.100.000; 4.900.000 VND.
 - Từ khóa/thành phố không tồn tại và khoảng ngày ngược trả kết quả rỗng.
 - Ảnh kết quả nằm trong evidence/.
-- Cần thử thêm: một booking đặt nhiều hạng phòng, nhiều loại tiền và đơn chưa có chi tiết.
+- Cuối file test có ba ca tự kiểm tra: nhiều hạng phòng, đơn chưa có chi tiết,
+  doanh thu tách VND và USD. Đã chạy ngày 17/11/2026, cả ba ca PASS.
+- Ba ca này tạo dữ liệu riêng rồi rollback; IDENTITY có thể tăng sau khi chạy.
