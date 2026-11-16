@@ -15,7 +15,7 @@ Hệ thống quản lý đặt phòng du lịch (tham khảo Booking.com), tiế
 | 1 | Dữ liệu mẫu ≥ 5 dòng/bảng (1.2) | `sql/02_seed.sql` | Lê Thế Nguyên | ✅ Đã tích hợp |
 | 2 | 3 thủ tục CRUD trên `BOOKING` (2.1) | `sql/03_crud.sql` | Phạm Nhật Quang | ✅ Đã tích hợp |
 | 3 | Trigger ràng buộc nghiệp vụ (2.2.1) | `sql/04_trigger_rangbuoc.sql` | Lê Thế Nguyên | ⚠️ Có, nhưng **xung đột tích hợp** — xem [issue #1](https://github.com/quangnguyen0101/travel-booking-management-system/issues/1) |
-| 4 | Trigger thuộc tính dẫn xuất (2.2.2) | `sql/05_trigger_danxuat.sql` | Nguyễn Trương Đăng Quang | ✅ Đã tích hợp — 13/13 test PASS |
+| 4 | Trigger thuộc tính dẫn xuất (2.2.2) | `sql/05_trigger_danxuat.sql` | Nguyễn Trương Đăng Quang | ✅ Đã tích hợp — `TOTAL_AMOUNT` + 3 cột rating (13/13 test rating) |
 | 5 | 2 thủ tục truy vấn (2.3) | `sql/06_query_procs.sql` | Đỗ Lê Chí Kiên | ⬜ Chưa nộp |
 | 6 | 2 hàm (2.4) | `sql/07_functions.sql` | Phan Anh Khoa | ⬜ Chưa nộp |
 | 7 | 3 màn hình ứng dụng (3.1–3.3) | `app/` | Quang, Khoa, Quang | ⬜ Chưa nộp |
@@ -32,13 +32,14 @@ travel-booking-management-system/
 │  ├─ 02_seed.sql        # Dữ liệu mẫu toàn bộ 36 bảng
 │  ├─ 03_crud.sql        # sp_Booking_Insert / Update / Delete (+ ValidateStay)
 │  ├─ 04_trigger_rangbuoc.sql
-│  └─ 05_trigger_danxuat.sql  # OVERALL_SCORE, AVERAGE_RATING, REVIEW_COUNT
+│  └─ 05_trigger_danxuat.sql  # BOOKING.TOTAL_AMOUNT, OVERALL_SCORE, AVERAGE_RATING, REVIEW_COUNT
 ├─ tests/                # Script kiểm tra, chỉ đọc hoặc tự dọn dữ liệu test
 │  ├─ 01_schema_check.sql
 │  ├─ 02_test_constraints.sql
 │  ├─ 2.1-testcases.sql
 │  ├─ 2.1-testcases.md
-│  └─ 05_trigger_danxuat-testcases.sql
+│  ├─ 05_trigger_danxuat-testcases.sql
+│  └─ 05_total_amount-testcases.sql
 ├─ evidence/             # Ảnh minh chứng gốc, đã đổi tên theo đầu việc
 ├─ docs/
 │  ├─ ghi-chu-1.1-1.2.txt
@@ -60,8 +61,9 @@ Mở lần lượt từng file bằng **File → Open**, bấm F5 theo đúng th
 5. `sql/03_crud.sql`
 6. `tests/2.1-testcases.sql` — xem kết quả ở tab **Messages**, cần 16/16 `[PASS]`
 7. `sql/04_trigger_rangbuoc.sql` — **chỉ chạy sau khi xử lý [issue #1](https://github.com/quangnguyen0101/travel-booking-management-system/issues/1)**
-8. `sql/05_trigger_danxuat.sql` — bổ sung cột dẫn xuất, backfill và tạo 3 trigger
+8. `sql/05_trigger_danxuat.sql` — bổ sung cột dẫn xuất (`TOTAL_AMOUNT` + 3 cột rating), backfill và tạo 7 trigger
 9. `tests/05_trigger_danxuat-testcases.sql` — cần 13/13 `PASS`; test tự rollback
+10. `tests/05_total_amount-testcases.sql` — cần 11/11 `PASS`; test tự rollback
 
 `01_schema.sql` và `02_seed.sql` đều có chốt an toàn: nếu database đã có bảng/dữ liệu thì dừng, không ghi đè.
 
@@ -119,6 +121,7 @@ Thông báo lỗi bắt đầu bằng tên trường bị sai, ví dụ `CHECK_I
 
 | Cột | Công thức | Bảng nguồn |
 | --- | --- | --- |
+| `BOOKING.TOTAL_AMOUNT` | `SUM(số đêm × ROOM_PRICE_AT_BOOKING × RESERVED_QUANTITY) − VOUCHER.DISCOUNT_VALUE`, không âm | `BOOKING`, `BOOKING_ROOM_TYPE`, `BOOKING_VOUCHER`, `VOUCHER` |
 | `REVIEW.OVERALL_SCORE` | trung bình 6 điểm thành phần, thang 1–10 | `REVIEW` |
 | `ACCOMMODATION.AVERAGE_RATING` | trung bình `REVIEW.OVERALL_SCORE` của cơ sở | `REVIEW` → `BOOKING` |
 | `ACCOMMODATION.REVIEW_COUNT` | số review của cơ sở | `REVIEW` → `BOOKING` |
@@ -126,6 +129,8 @@ Thông báo lỗi bắt đầu bằng tên trường bị sai, ví dụ `CHECK_I
 - `AVERAGE_RATING` dùng `OVERALL_SCORE`, nên trigger tính `OVERALL_SCORE` được đặt chạy **First**, trigger tính rating cơ sở chạy **Last** trên `REVIEW`.
 - Trigger đọc lại dữ liệu gốc từ bảng, không lấy giá trị có sẵn trên dòng `inserted`.
 - Xử lý đủ INSERT/UPDATE/DELETE `REVIEW`, đổi `REVIEW.BOOKING_ID`, và đổi `BOOKING.ACCOMMODATION_ID`.
+- `TOTAL_AMOUNT` phủ INSERT/UPDATE `BOOKING`, INSERT/UPDATE/DELETE `BOOKING_ROOM_TYPE`, `BOOKING_VOUCHER`, và UPDATE `VOUCHER.DISCOUNT_VALUE`; ghi trực tiếp cột dẫn xuất sẽ bị trigger tính lại.
+- ⚠ `04_trigger_rangbuoc.sql` có trigger `INSTEAD OF INSERT, UPDATE` trên `BOOKING`, nó **nuốt mọi UPDATE** vào `BOOKING` nên `TOTAL_AMOUNT` sẽ đứng yên 0. Nếu dùng cả `04`, phải thêm `b.TOTAL_AMOUNT = i.TOTAL_AMOUNT` vào câu `UPDATE` trong `trg_Booking_NoOverlap` (file của người khác — báo tác giả sửa).
 - File chạy lại được: cột/ràng buộc có kiểm tra tồn tại, trigger drop rồi tạo lại, dữ liệu cũ được backfill.
 
 ## Kết quả chạy thử của repo này
@@ -142,6 +147,7 @@ Chạy trên SQL Server 2025 (`mcr.microsoft.com/mssql/server:2025-latest`) tron
 | `2.1-testcases.sql` | ✅ 16/16 PASS |
 | `04_trigger_rangbuoc.sql` | ✅ 5/5 test riêng PASS, nhưng ⚠️ làm hỏng `sp_Booking_Insert` — xem [issue #1](https://github.com/quangnguyen0101/travel-booking-management-system/issues/1) |
 | `05_trigger_danxuat.sql` + `05_trigger_danxuat-testcases.sql` | ✅ 13/13 PASS, kể cả khi đã cài `04` |
+| `05_total_amount-testcases.sql` | ⬜ Chưa chạy trên máy này — cần 11/11 PASS |
 
 ## Theo dõi lỗi
 
