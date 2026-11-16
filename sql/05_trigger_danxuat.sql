@@ -5,10 +5,21 @@
  Nguyễn Trương Đăng Quang
 
  THUỘC TÍNH CHỌN
-   1. REVIEW.OVERALL_SCORE
+   1. BOOKING.TOTAL_AMOUNT (thuộc tính chính của 2.2.2)
+      = SUM(số đêm * ROOM_PRICE_AT_BOOKING * RESERVED_QUANTITY) - giảm giá
+      giảm giá = VOUCHER.DISCOUNT_VALUE của BOOKING_VOUCHER (tối đa 1 voucher/đơn).
+      Schema không có ROOM.BASE_PRICE / BOOKING_SERVICE / BOOKING_PROMOTION:
+      - giá phòng lấy từ BOOKING_ROOM_TYPE.ROOM_PRICE_AT_BOOKING (đã chốt lúc
+        đặt, nguồn là ROOM_RATE.UNIT_PRICE trong 03_crud) nên đổi ROOM_RATE về
+        sau không hồi tố đơn cũ.
+      - giảm giá lấy từ BOOKING_VOUCHER -> VOUCHER, không có % nên không cần
+        nhân với tiền phòng.
+      Không để âm: nếu giảm giá >= tiền phòng thì TOTAL_AMOUNT = 0.
+
+   2. REVIEW.OVERALL_SCORE
       = trung bình 6 điểm thành phần CLEANLINESS, COMFORT, [LOCATION],
         FACILITIES, STAFF, VALUE_FOR_MONEY (thang 1..10).
-   2. ACCOMMODATION.AVERAGE_RATING + ACCOMMODATION.REVIEW_COUNT
+   3. ACCOMMODATION.AVERAGE_RATING + ACCOMMODATION.REVIEW_COUNT
       = trung bình OVERALL_SCORE và số review của tất cả booking thuộc cơ sở.
 
    AVERAGE_RATING dùng OVERALL_SCORE (một thuộc tính dẫn xuất khác), nên
@@ -18,6 +29,13 @@
    REVIEW, không lấy giá trị có sẵn trên dòng inserted.
 
  DML ẢNH HƯỞNG
+   TOTAL_AMOUNT:
+   - INSERT / UPDATE BOOKING (CHECK_IN_DATE, CHECK_OUT_DATE).
+   - INSERT / UPDATE / DELETE BOOKING_ROOM_TYPE.
+   - INSERT / UPDATE / DELETE BOOKING_VOUCHER.
+   - UPDATE VOUCHER.DISCOUNT_VALUE.
+   - DELETE VOUCHER bị FK_BOOKING_VOUCHER_VOUCHER chặn khi còn đơn dùng.
+   OVERALL_SCORE / AVERAGE_RATING / REVIEW_COUNT:
    - INSERT / UPDATE / DELETE trên REVIEW.
    - UPDATE REVIEW.BOOKING_ID: review chuyển sang đơn (và cơ sở) khác.
    - UPDATE BOOKING.ACCOMMODATION_ID: đơn có review chuyển cơ sở.
@@ -100,9 +118,9 @@ SELECT a.ACCOMMODATION_ID,
        c.REVIEW_COUNT,
        v.AVERAGE_RATING
 FROM dbo.ACCOMMODATION AS a
--- Đếm toàn bộ review của cơ sở (kể cả review chưa có điểm).
+-- Đếm review có điểm để REVIEW_COUNT cùng tập với AVERAGE_RATING.
 OUTER APPLY (
-    SELECT COUNT(r.REVIEW_ID) AS REVIEW_COUNT
+    SELECT COUNT(r.OVERALL_SCORE) AS REVIEW_COUNT
     FROM dbo.BOOKING AS b
     JOIN dbo.REVIEW AS r ON r.BOOKING_ID = b.BOOKING_ID
     WHERE b.ACCOMMODATION_ID = a.ACCOMMODATION_ID
@@ -153,11 +171,8 @@ BEGIN
     IF TRIGGER_NESTLEVEL(OBJECT_ID(N'dbo.trg_Review_ComputeOverallScore')) > 1
         RETURN;
 
-    -- Nếu chỉ cập nhật OVERALL_SCORE (ví dụ backfill) thì không cần tính lại.
-    IF UPDATE(OVERALL_SCORE)
-       AND NOT (UPDATE(CLEANLINESS) OR UPDATE(COMFORT) OR UPDATE([LOCATION])
-                OR UPDATE(FACILITIES) OR UPDATE(STAFF) OR UPDATE(VALUE_FOR_MONEY))
-        RETURN;
+    -- Luôn tính lại từ 6 điểm gốc, kể cả khi có người ghi trực tiếp
+    -- OVERALL_SCORE: thuộc tính dẫn xuất không được phép sửa tay.
 
     UPDATE r
     SET OVERALL_SCORE = ROUND(
@@ -293,4 +308,187 @@ WHERE a.REVIEW_COUNT <> v.REVIEW_COUNT
    OR ISNULL(a.AVERAGE_RATING, -1) <> ISNULL(v.AVERAGE_RATING, -1);
 
 PRINT N'--- 2.2.2: đã tạo trigger OVERALL_SCORE, AVERAGE_RATING, REVIEW_COUNT ---';
+GO
+
+/* ============================================================================
+   8. THUỘC TÍNH DẪN XUẤT CHÍNH — BOOKING.TOTAL_AMOUNT
+   Công thức:
+     tiền phòng = SUM(số đêm * ROOM_PRICE_AT_BOOKING * RESERVED_QUANTITY)
+     giảm giá   = VOUCHER.DISCOUNT_VALUE của BOOKING_VOUCHER
+     TOTAL_AMOUNT = MAX(tiền phòng - giảm giá, 0)
+   Schema không có ROOM.BASE_PRICE / BOOKING_SERVICE / BOOKING_PROMOTION nên
+   dùng BOOKING_ROOM_TYPE.ROOM_PRICE_AT_BOOKING (giá chốt lúc đặt) và
+   BOOKING_VOUCHER -> VOUCHER. Đổi ROOM_RATE.UNIT_PRICE không hồi tố đơn cũ.
+
+   ⚠ NẾU ĐÃ CÀI 04_trigger_rangbuoc.sql: trigger INSTEAD OF INSERT, UPDATE
+   trên BOOKING nuốt mọi UPDATE vào BOOKING, nên cột này sẽ đứng yên 0.
+   Cần thêm dòng "b.TOTAL_AMOUNT = i.TOTAL_AMOUNT" vào câu UPDATE trong
+   trg_Booking_NoOverlap (file của người khác — báo tác giả việc 1/2.1 sửa).
+   ============================================================================ */
+
+IF COL_LENGTH(N'dbo.BOOKING', N'TOTAL_AMOUNT') IS NULL
+    ALTER TABLE dbo.BOOKING
+        ADD TOTAL_AMOUNT DECIMAL(18,2) NOT NULL
+            CONSTRAINT DF_BOOKING_TOTAL_AMOUNT DEFAULT (0);
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints
+               WHERE name = N'CK_BOOKING_TOTAL_AMOUNT'
+                 AND parent_object_id = OBJECT_ID(N'dbo.BOOKING'))
+    ALTER TABLE dbo.BOOKING
+        ADD CONSTRAINT CK_BOOKING_TOTAL_AMOUNT CHECK (TOTAL_AMOUNT >= 0);
+GO
+
+/* ----------------------------------------------------------------------------
+   9. VIEW TÍNH TOTAL_AMOUNT TỪ DỮ LIỆU GỐC
+   Dùng chung cho 4 trigger, tránh lặp công thức.
+   ---------------------------------------------------------------------------- */
+CREATE OR ALTER VIEW dbo.vw_BookingTotalAmount
+AS
+SELECT b.BOOKING_ID,
+       CAST(
+           CASE
+               WHEN ISNULL(v.DISCOUNT_VALUE, 0) >= ISNULL(rt.ROOM_AMOUNT, 0) THEN 0
+               ELSE ISNULL(rt.ROOM_AMOUNT, 0) - ISNULL(v.DISCOUNT_VALUE, 0)
+           END
+           AS DECIMAL(18,2)) AS TOTAL_AMOUNT
+FROM dbo.BOOKING AS b
+OUTER APPLY (
+    SELECT SUM(CAST(DATEDIFF(DAY, b.CHECK_IN_DATE, b.CHECK_OUT_DATE) AS DECIMAL(18,2))
+               * brt.ROOM_PRICE_AT_BOOKING
+               * brt.RESERVED_QUANTITY) AS ROOM_AMOUNT
+    FROM dbo.BOOKING_ROOM_TYPE AS brt
+    WHERE brt.BOOKING_ID = b.BOOKING_ID
+) AS rt
+OUTER APPLY (
+    SELECT MAX(v.DISCOUNT_VALUE) AS DISCOUNT_VALUE
+    FROM dbo.BOOKING_VOUCHER AS bv
+    JOIN dbo.VOUCHER AS v ON v.VOUCHER_CODE = bv.VOUCHER_CODE
+    WHERE bv.BOOKING_ID = b.BOOKING_ID
+) AS v;
+GO
+
+/* ----------------------------------------------------------------------------
+   10. BACKFILL CÁC ĐƠN ĐANG CÓ
+   Chạy trước khi tạo trigger để không phụ thuộc trạng thái trigger cũ.
+   ---------------------------------------------------------------------------- */
+UPDATE b
+SET TOTAL_AMOUNT = v.TOTAL_AMOUNT
+FROM dbo.BOOKING AS b
+JOIN dbo.vw_BookingTotalAmount AS v ON v.BOOKING_ID = b.BOOKING_ID;
+GO
+
+/* ----------------------------------------------------------------------------
+   11. TRIGGER TOTAL_AMOUNT — phủ đủ DML của mọi bảng nguồn
+   ---------------------------------------------------------------------------- */
+
+-- 11a. Đơn đổi ngày ở -> tính lại.
+DROP TRIGGER IF EXISTS dbo.trg_Booking_ComputeTotalAmount;
+GO
+
+CREATE TRIGGER dbo.trg_Booking_ComputeTotalAmount
+ON dbo.BOOKING
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF TRIGGER_NESTLEVEL(OBJECT_ID(N'dbo.trg_Booking_ComputeTotalAmount')) > 1
+        RETURN;
+
+    UPDATE b
+    SET TOTAL_AMOUNT = v.TOTAL_AMOUNT
+    FROM dbo.BOOKING AS b
+    JOIN inserted AS i ON i.BOOKING_ID = b.BOOKING_ID
+    JOIN dbo.vw_BookingTotalAmount AS v ON v.BOOKING_ID = b.BOOKING_ID;
+END;
+GO
+
+-- 11b. Thêm/sửa/xóa hạng phòng của đơn.
+DROP TRIGGER IF EXISTS dbo.trg_BookingRoomType_RefreshTotalAmount;
+GO
+
+CREATE TRIGGER dbo.trg_BookingRoomType_RefreshTotalAmount
+ON dbo.BOOKING_ROOM_TYPE
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF TRIGGER_NESTLEVEL(OBJECT_ID(N'dbo.trg_BookingRoomType_RefreshTotalAmount')) > 1
+        RETURN;
+
+    UPDATE b
+    SET TOTAL_AMOUNT = v.TOTAL_AMOUNT
+    FROM dbo.BOOKING AS b
+    JOIN (SELECT BOOKING_ID FROM inserted
+          UNION
+          SELECT BOOKING_ID FROM deleted) AS a ON a.BOOKING_ID = b.BOOKING_ID
+    JOIN dbo.vw_BookingTotalAmount AS v ON v.BOOKING_ID = b.BOOKING_ID;
+END;
+GO
+
+-- 11c. Gắn/đổi/bỏ voucher của đơn.
+DROP TRIGGER IF EXISTS dbo.trg_BookingVoucher_RefreshTotalAmount;
+GO
+
+CREATE TRIGGER dbo.trg_BookingVoucher_RefreshTotalAmount
+ON dbo.BOOKING_VOUCHER
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF TRIGGER_NESTLEVEL(OBJECT_ID(N'dbo.trg_BookingVoucher_RefreshTotalAmount')) > 1
+        RETURN;
+
+    UPDATE b
+    SET TOTAL_AMOUNT = v.TOTAL_AMOUNT
+    FROM dbo.BOOKING AS b
+    JOIN (SELECT BOOKING_ID FROM inserted
+          UNION
+          SELECT BOOKING_ID FROM deleted) AS a ON a.BOOKING_ID = b.BOOKING_ID
+    JOIN dbo.vw_BookingTotalAmount AS v ON v.BOOKING_ID = b.BOOKING_ID;
+END;
+GO
+
+-- 11d. Voucher bị đổi mức giảm -> mọi đơn đang dùng voucher đó tính lại.
+DROP TRIGGER IF EXISTS dbo.trg_Voucher_RefreshBookingTotal;
+GO
+
+CREATE TRIGGER dbo.trg_Voucher_RefreshBookingTotal
+ON dbo.VOUCHER
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT UPDATE(DISCOUNT_VALUE)
+        RETURN;
+
+    IF TRIGGER_NESTLEVEL(OBJECT_ID(N'dbo.trg_Voucher_RefreshBookingTotal')) > 1
+        RETURN;
+
+    UPDATE b
+    SET TOTAL_AMOUNT = v.TOTAL_AMOUNT
+    FROM dbo.BOOKING AS b
+    JOIN dbo.BOOKING_VOUCHER AS bv ON bv.BOOKING_ID = b.BOOKING_ID
+    JOIN inserted AS i ON i.VOUCHER_CODE = bv.VOUCHER_CODE
+    JOIN dbo.vw_BookingTotalAmount AS v ON v.BOOKING_ID = b.BOOKING_ID;
+END;
+GO
+
+/* ============================================================================
+   12. KIỂM TRA NHANH SAU KHI CÀI
+   Kết quả luôn rỗng nếu TOTAL_AMOUNT khớp dữ liệu gốc.
+   ============================================================================ */
+PRINT N'--- BOOKING lệch TOTAL_AMOUNT ---';
+SELECT b.BOOKING_ID,
+       b.TOTAL_AMOUNT AS DangLuu,
+       v.TOTAL_AMOUNT AS TinhLai
+FROM dbo.BOOKING AS b
+JOIN dbo.vw_BookingTotalAmount AS v ON v.BOOKING_ID = b.BOOKING_ID
+WHERE b.TOTAL_AMOUNT <> v.TOTAL_AMOUNT;
+
+PRINT N'--- 2.2.2: đã tạo BOOKING.TOTAL_AMOUNT + OVERALL_SCORE, AVERAGE_RATING, REVIEW_COUNT ---';
 GO
