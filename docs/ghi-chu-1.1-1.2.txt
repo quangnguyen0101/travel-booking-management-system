@@ -1,0 +1,73 @@
+﻿GHI CHÚ VIỆC 1 - BTL2
+
+Người 1: tạo bảng và ràng buộc.
+Người 2: dữ liệu mẫu, kiểm thử và review schema.
+Hệ quản trị: MS SQL Server.
+
+1. FILE VÀ CÁCH CHẠY
+
+- 01_schema.sql: tạo database và các bảng theo BTL1.
+- 01_schema_check.sql: kiểm tra cấu trúc và xem số dòng của từng bảng.
+- 02_seed.sql: Người 2 viết để thêm dữ liệu mẫu, do Người 2 chuẩn bị.
+
+Trên database chưa có bảng: chạy 01_schema.sql rồi chạy file 01_schema_check.sql để kiểm tra.
+Sau khi review cấu trúc, Người 2 viết và chạy 02_seed.sql, rồi kiểm tra lại dữ liệu.
+Nếu database đã có bảng thì file schema sẽ dừng; không cần chạy lại khi cấu trúc
+đã tạo thành công. File check chỉ đọc thông tin, không sửa dữ liệu.
+
+2. QUY ƯỚC DỮ LIỆU
+
+- BOOKING.STATUS: PENDING, CONFIRMED, COMPLETED, CANCELLED.
+- PAYMENT.PAYMENT_STATUS: PENDING, PAID, FAILED, REFUNDED.
+- PAYMENT.PAYMENT_METHOD: CARD, AT_PROPERTY.
+- ROOM.AVAILABILITY_STATUS: AVAILABLE, BOOKED, MAINTENANCE.
+- VOUCHER.STATUS: ACTIVE, EXPIRED, USED.
+- CANCELLATION.REFUND_STATUS: PENDING, COMPLETED, FAILED, NOT_REQUIRED.
+- GUEST.GENDER: MALE, FEMALE, OTHER; có thể để NULL.
+
+Các điểm cần lưu ý khi nhập:
+- Dữ liệu tiếng Việt dùng N'...'; số thẻ dùng dữ liệu giả lập.
+- CARD_NUMBER có giá trị khi trả bằng CARD, để NULL khi trả tại chỗ nghỉ.
+- DISCOUNT_VALUE hiện là số tiền giảm, chưa phân biệt giảm theo %.
+- Điểm đánh giá từ 1 đến 10; xếp hạng sao từ 1 đến 5.
+- Ngày đặt không sau ngày nhận phòng; ngày trả phải sau ngày nhận phòng.
+- Email, mã booking, mã số thuế của HOST và cặp khách-cơ sở trong wishlist không trùng.
+- Số phòng không trùng trong cùng một cơ sở.
+- Mỗi booking có tối đa một voucher, payment, cancellation và review.
+- Mỗi review có tối đa một response.
+- Các bảng có IDENTITY: USER, ACCOMMODATION, WISHLIST, PHOTO, BOOKING,
+  PAYMENT, REVIEW, MESSAGE. Bảng con dùng lại mã của bảng cha; không mặc định
+  IDENTITY luôn tăng liên tục.
+
+3. DỮ LIỆU MẪU VÀ KIỂM THỬ
+
+- Mỗi bảng ít nhất 5 dòng; có ít nhất 10 phòng thực tế.
+- Chuẩn bị ít nhất 15 USER cho 5 GUEST, 5 HOST, 5 ADMIN không trùng vai trò.
+- Chuẩn bị ít nhất 20 ACCOMMODATION để mỗi loại hình có 5 cơ sở.
+- Có ít nhất 10 PHOTO để hai nhóm ảnh cơ sở và ảnh hạng phòng không trùng nhau.
+- Có ít nhất 5 booking hoàn thành để tạo REVIEW, đồng thời có các trạng thái khác.
+- Chèn bảng cha trước, bảng con sau. Với dữ liệu lịch sử, ghi rõ các ngày liên quan.
+- Thử dữ liệu vi phạm CHECK, FK, UNIQUE và lưu thông báo lỗi làm minh chứng.
+
+4. CÁC ĐIỂM CẦN THỐNG NHẤT
+
+Schema hiện chưa kiểm soát đầy đủ các điểm sau; cần phối hợp với người làm
+trigger/thủ tục và cập nhật cấu trúc nếu có thay đổi:
+
+- USER thuộc đúng một vai trò; ACCOMMODATION thuộc đúng một loại hình.
+  PK/FK hiện chưa kiểm tra tính đầy đủ và loại trừ giữa các bảng con.
+- PHOTO chỉ thuộc một trong hai nhóm ảnh. GUEST phải có WALLET; cơ sở và
+  hạng phòng phải có các bản ghi con bắt buộc theo nghiệp vụ.
+- Review chỉ được gửi sau khi booking COMPLETED và từ ngày trả phòng trở đi.
+- Voucher phải đúng khách và còn hiệu lực; cần chốt dùng một lần hay nhiều lần.
+- Phí hủy và tiền hoàn phải đối chiếu với số tiền đã thanh toán.
+- Booking đang đặt theo hạng phòng, chưa gán phòng thực tế. Cần chốt cách phân
+  phòng hoặc kiểm tra tồn phòng theo hạng để xử lý trùng lịch.
+- Kiểm tra sức chứa phải xét cả số lượng phòng đặt RESERVED_QUANTITY.
+- CHECK STATUS chưa kiểm tra thứ tự chuyển trạng thái.
+- Các thuộc tính dẫn xuất như TOTAL_AMOUNT, TOTAL_NIGHTS, OVERALL_SCORE,
+  AVERAGE_RATING, GENIUS_LEVEL cần thống nhất cách tính và cách lưu.
+- HOST phản hồi phải là chủ cơ sở; người gửi và tin nhắn được trả lời phải
+  thuộc cuộc hội thoại hợp lệ.
+- PAYMENT đang theo quan hệ 1:1. Nếu lưu nhiều lần thử thanh toán thì cần sửa lại.
+- Các bảng không dùng CASCADE DELETE; phần xóa phối hợp với người viết CRUD.

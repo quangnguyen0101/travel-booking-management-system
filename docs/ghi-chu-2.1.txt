@@ -1,0 +1,72 @@
+GHI CHÚ VIỆC 2 - BTL2 (PHẦN 2.1)
+
+Nội dung: 3 thủ tục thêm / sửa / xóa trên bảng BOOKING.
+Hệ quản trị: MS SQL Server, database BTL2_Booking_Nhom5.
+
+1. FILE VÀ CÁCH CHẠY
+
+- sql/03_crud.sql: tạo sp_Booking_Insert, sp_Booking_Update, sp_Booking_Delete và thủ tục phụ
+  sp_Booking_ValidateStay (kiểm tra chung cho thêm và sửa).
+- tests/2.1-testcases.sql: 16 ca kiểm thử.
+- tests/2.1-testcases.md: mô tả các kiểm tra, bảng mã lỗi, danh sách ca test và kết quả chạy.
+- image/: ảnh minh chứng (tạo thủ tục, kết quả 16 ca test, kiểm tra bổ sung).
+
+Thứ tự chạy:
+1. 01_schema.sql và 02_seed.sql của phần 1.1, 1.2 (bỏ qua nếu database đã có dữ liệu).
+2. sql/03_crud.sql. Script dùng CREATE OR ALTER nên chạy lại nhiều lần được.
+3. tests/2.1-testcases.sql, xem kết quả ở tab Messages. Mỗi ca in [PASS] hoặc [FAIL].
+
+File test tính ngày theo hôm nay nên chạy lại lúc nào cũng được. Đơn tạo ra trong lúc test
+sẽ bị hủy và xóa ở cuối file, nên dữ liệu mẫu không đổi.
+Nếu chạy bằng sqlcmd thì thêm -I (bật QUOTED_IDENTIFIER) và -f 65001 (đọc file UTF-8).
+
+2. CÁCH GỌI THỦ TỤC
+
+- Thêm: EXEC dbo.sp_Booking_Insert @UserId, @AccommodationId, @RoomName, @CheckIn, @CheckOut,
+        @Adults, @Children = 0, @Quantity = 1, @VoucherCode = NULL,
+        @EstimatedArrivalTime = NULL, @SpecialRequests = NULL, @BookingId OUTPUT
+  Tạo đơn PENDING. Mã đơn sinh tự động dạng BK<năm><số đơn>, giá lấy từ ROOM_RATE.
+- Sửa:  EXEC dbo.sp_Booking_Update @BookingId, @Status, @RoomName, @Quantity, @CheckIn, @CheckOut,
+        @Adults, @Children, @EstimatedArrivalTime, @SpecialRequests
+  Tham số để NULL thì giữ nguyên giá trị cũ.
+- Xóa:  EXEC dbo.sp_Booking_Delete @BookingId
+
+Lỗi được báo bằng THROW với mã riêng: 511xx kiểm tra chung, 5112x thêm, 512xx sửa, 513xx xóa.
+Thông báo lỗi bắt đầu bằng tên trường bị sai (ví dụ: CHECK_IN_DATE: ...).
+
+3. QUY TẮC NGHIỆP VỤ
+
+Thêm / sửa:
+- Khách phải có vai trò GUEST; cơ sở và hạng phòng phải tồn tại; hạng phòng còn phòng không bảo trì.
+- Ngày nhận phòng từ hôm nay trở đi; ngày trả sau ngày nhận; tối đa 30 đêm.
+- Ít nhất 1 người lớn; không vượt sức chứa của ROOM_TYPE nhân số phòng đặt.
+- Không trùng lịch: số phòng đã đặt trùng ngày + số phòng đặt thêm không vượt số phòng sẵn sàng.
+- Voucher phải tồn tại, đúng khách, ACTIVE và còn hạn; dùng xong chuyển USED.
+
+Sửa:
+- Không sửa đơn COMPLETED / CANCELLED.
+- Chỉ đơn PENDING được đổi phòng, ngày ở hoặc số khách; đơn có payment PAID phải hoàn tiền trước.
+- Luồng trạng thái: PENDING -> CONFIRMED -> COMPLETED; PENDING/CONFIRMED -> CANCELLED.
+  Chỉ chuyển sang COMPLETED khi đã đến ngày nhận phòng.
+
+Xóa (dọn đơn rác, giữ lịch sử giao dịch):
+- Chỉ xóa đơn PENDING hoặc CANCELLED; cấm xóa CONFIRMED / COMPLETED.
+- Cấm xóa đơn có payment PAID hoặc REFUNDED.
+- Xóa bảng con trong cùng transaction trước khi xóa BOOKING: BOOKING_ROOM_TYPE, BOOKING_VOUCHER,
+  PAYMENT, CANCELLATION, MESSAGE, MESSAGE_REPLY. Voucher của đơn được trả lại ACTIVE
+  (hoặc EXPIRED nếu đã quá hạn).
+
+4. CÁC ĐIỂM KHÁC BẢNG PHÂN CÔNG
+
+Thủ tục viết theo schema thật của nhóm (01_schema.sql):
+- Đơn đặt theo hạng phòng (BOOKING_ROOM_TYPE + RESERVED_QUANTITY), chưa gán phòng cụ thể.
+- BOOKING.STATUS không có CHECKED_IN.
+- Mã khuyến mãi là VOUCHER; schema không có BOOKING_SERVICE, BOOKING_PROMOTION.
+- GUEST không có cột trạng thái hoạt động, nên chỉ kiểm tra vai trò GUEST.
+- Mỗi đơn tạo bằng sp_Booking_Insert có 1 hạng phòng; sp_Booking_Update giả định điều này.
+
+5. KẾT QUẢ KIỂM THỬ
+
+16/16 ca PASS trên SQL Server 2022 (Docker), database tạo mới từ 01_schema.sql và 02_seed.sql.
+Ảnh trong image/ là output thật của sqlcmd (máy chạy test không có SSMS).
+Chạy lại trong SSMS sẽ ra cùng nội dung, chỉ khác ngày và BOOKING_ID.

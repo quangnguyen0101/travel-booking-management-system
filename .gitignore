@@ -1,0 +1,37 @@
+# Hệ điều hành / IDE
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# SQL Server: file dữ liệu, backup, log
+*.bak
+*.mdf
+*.ldf
+*.trc
+
+# App Python (nếu nhóm chọn Flask)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# App Node (nếu nhóm chọn Express)
+node_modules/
+
+# LaTeX build
+*.aux
+*.bcf
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+
+# File tạm
+*.tmp
+*.swp
