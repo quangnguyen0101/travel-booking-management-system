@@ -92,20 +92,29 @@ GO
 /* ============================================================================
    1. VIEW TÍNH RATING TỪ DỮ LIỆU GỐC
    Dùng chung cho trigger REVIEW và trigger BOOKING, tránh lặp công thức.
-   LEFT JOIN để cơ sở chưa có review vẫn có dòng REVIEW_COUNT = 0.
+   OUTER APPLY để cơ sở chưa có review vẫn có dòng REVIEW_COUNT = 0.
    ============================================================================ */
 CREATE OR ALTER VIEW dbo.vw_AccommodationRatingStats
 AS
 SELECT a.ACCOMMODATION_ID,
-       COUNT(r.REVIEW_ID) AS REVIEW_COUNT,
-       -- SUM/COUNT thay cho AVG để không phát warning khi có OVERALL_SCORE NULL;
-       -- NULL không được cộng vào tử số và không được đếm ở mẫu số.
-       CAST(SUM(ISNULL(r.OVERALL_SCORE, 0)) / NULLIF(COUNT(r.OVERALL_SCORE), 0)
-            AS DECIMAL(4,2)) AS AVERAGE_RATING
+       c.REVIEW_COUNT,
+       v.AVERAGE_RATING
 FROM dbo.ACCOMMODATION AS a
-LEFT JOIN dbo.BOOKING AS b ON b.ACCOMMODATION_ID = a.ACCOMMODATION_ID
-LEFT JOIN dbo.REVIEW AS r ON r.BOOKING_ID = b.BOOKING_ID
-GROUP BY a.ACCOMMODATION_ID;
+-- Đếm toàn bộ review của cơ sở (kể cả review chưa có điểm).
+OUTER APPLY (
+    SELECT COUNT(r.REVIEW_ID) AS REVIEW_COUNT
+    FROM dbo.BOOKING AS b
+    JOIN dbo.REVIEW AS r ON r.BOOKING_ID = b.BOOKING_ID
+    WHERE b.ACCOMMODATION_ID = a.ACCOMMODATION_ID
+) AS c
+-- Chỉ lấy review có điểm; AVG không gặp NULL nên không phát warning.
+OUTER APPLY (
+    SELECT CAST(AVG(r.OVERALL_SCORE) AS DECIMAL(4,2)) AS AVERAGE_RATING
+    FROM dbo.BOOKING AS b
+    JOIN dbo.REVIEW AS r ON r.BOOKING_ID = b.BOOKING_ID
+    WHERE b.ACCOMMODATION_ID = a.ACCOMMODATION_ID
+      AND r.OVERALL_SCORE IS NOT NULL
+) AS v;
 GO
 
 /* ============================================================================
