@@ -6,6 +6,7 @@
 App không tự viết INSERT/UPDATE/DELETE. SELECT trực tiếp chỉ để đổ dropdown và nạp dữ liệu form sửa.
 """
 import os
+from collections import Counter
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
@@ -31,10 +32,7 @@ FIELD_OF = {'USER_ID': 'user_id', 'ACCOMMODATION_ID': 'room', 'ROOM_NAME': 'room
             'CHECK_OUT_DATE': 'check_out', 'Trùng lịch': 'check_in', 'RESERVED_QUANTITY': 'quantity',
             'ADULTS': 'adults', 'ADULTS/CHILDREN': 'adults', 'CHILDREN': 'children',
             'VOUCHER_CODE': 'voucher_code', 'STATUS': 'status', 'PAYMENT': 'status'}
-app.jinja_env.globals.update(
-    STATUSES=STATUSES, SORTS=SORTS,
-    STATUS_CLS={'PENDING': 'warning', 'CONFIRMED': 'primary', 'COMPLETED': 'success', 'CANCELLED': 'secondary'},
-    TIER_CLS={'PLATINUM': 'dark', 'GOLD': 'warning', 'SILVER': 'secondary', 'BRONZE': 'danger'})
+app.jinja_env.globals.update(STATUSES=STATUSES, SORTS=SORTS, PAGE_SIZE=PAGE_SIZE)
 
 
 def query(sql, params=None):
@@ -160,7 +158,7 @@ def booking_list():
     pages = max(1, -(-len(rows) // PAGE_SIZE))
     page = min(max(to_int(args.get('page')) or 1, 1), pages)
     return render_template('list.html', rows=rows[(page - 1) * PAGE_SIZE:page * PAGE_SIZE], total=len(rows),
-                           page=page, pages=pages, args=args, sort=sort)
+                           page=page, pages=pages, args=args, sort=sort, counts=Counter(r['STATUS'] for r in rows))
 
 
 # ---------- 3.1 Form thêm / sửa / xóa ----------
@@ -185,7 +183,8 @@ def booking_new():
 
 
 BOOKING_SQL = '''SELECT b.BOOKING_ID, b.BOOKING_CODE, b.[STATUS], b.USER_ID, u.FULL_NAME,
-       b.ACCOMMODATION_ID, a.[NAME] AS ACCOMMODATION_NAME, brt.ROOM_NAME, brt.RESERVED_QUANTITY,
+       b.ACCOMMODATION_ID, a.[NAME] AS ACCOMMODATION_NAME, brt.ROOM_NAME, brt.RESERVED_QUANTITY, brt.ROOM_PRICE_AT_BOOKING,
+       DATEDIFF(DAY, b.CHECK_IN_DATE, b.CHECK_OUT_DATE) AS NIGHTS, b.BOOKING_DATE,
        b.CHECK_IN_DATE, b.CHECK_OUT_DATE, b.ADULTS, b.CHILDREN,
        CONVERT(CHAR(5), b.ESTIMATED_ARRIVAL_TIME, 108) AS ARRIVAL_TIME, b.SPECIAL_REQUESTS,
        p.PAYMENT_STATUS, p.AMOUNT, dbo.fn_CancelRefund(b.BOOKING_ID) AS REFUND
