@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">Dashboard doanh thu</h1>
+
+<form class="card card-body mb-3" method="get">
+  {% for k in ('guest', 'year') if args[k] %}<input type="hidden" name="{{ k }}" value="{{ args[k] }}">{% endfor %}
+  <div class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label" for="city">Thành phố</label>
+      <select class="form-select" id="city" name="city">
+        <option value="">Tất cả</option>
+        {% for c in cities %}<option {{ 'selected' if args.city == c.CITY }}>{{ c.CITY }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="from">Thanh toán từ</label>
+      <input class="form-control" type="date" id="from" name="from" value="{{ args['from'] }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label" for="to">đến ngày</label>
+      <input class="form-control" type="date" id="to" name="to" value="{{ args['to'] }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="min_revenue">Doanh thu tối thiểu</label>
+      <input class="form-control" type="number" id="min_revenue" name="min_revenue" value="{{ args.min_revenue }}" min="0" step="1000" placeholder="VD: 5000000">
+    </div>
+    <div class="col-md-2 d-grid"><button class="btn btn-outline-primary">Lọc</button></div>
+  </div>
+</form>
+
+<div class="row g-3 mb-3">
+  {% for cur, t in totals.items() %}
+  <div class="col-sm-6 col-lg-4">
+    <div class="card card-body">
+      <div class="small text-body-secondary">Tổng doanh thu ({{ cur }})</div>
+      <div class="fs-3 fw-semibold">{{ t.revenue|money }}</div>
+      <div class="small text-body-secondary">{{ t.bookings }} đơn đã thanh toán · {{ t.places }} cơ sở</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card card-body h-100">
+      <h2 class="h6">Doanh thu theo cơ sở</h2>
+      {% if chart %}<div style="position: relative; height: {{ 80 + 48 * chart|length }}px"><canvas id="chart" aria-label="Biểu đồ doanh thu theo cơ sở" role="img"></canvas></div>
+      {% else %}<p class="text-body-secondary mb-0">Không có doanh thu khớp bộ lọc.</p>{% endif %}
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light">
+            <tr><th>Cơ sở</th><th class="text-end">Số đơn</th><th class="text-end">Doanh thu</th><th class="text-end">TB / thanh toán</th></tr>
+          </thead>
+          <tbody>
+          {% for r in rows %}
+            <tr>
+              <td>{{ r.ACCOMMODATION_NAME }}<div class="small text-body-secondary">{{ r.CITY }} · {{ r.CURRENCY }}</div></td>
+              <td class="text-end">{{ r.BOOKING_COUNT }}</td>
+              <td class="text-end fw-semibold">{{ r.TOTAL_REVENUE|money }}</td>
+              <td class="text-end">{{ r.AVG_PAYMENT_AMOUNT|money }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="text-center text-body-secondary py-4">Không có dữ liệu.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="small text-body-secondary mt-2">Nguồn: <code>sp_Revenue_By_Accommodation</code> — chỉ tính PAYMENT trạng thái PAID, lọc theo ngày thanh toán.</p>
+
+<div class="card card-body mt-4">
+  <h2 class="h5">Tra cứu hạng khách</h2>
+  <form class="row g-2 align-items-end mb-3" method="get">
+    {% for k in ('city', 'from', 'to', 'min_revenue') if args[k] %}<input type="hidden" name="{{ k }}" value="{{ args[k] }}">{% endfor %}
+    <div class="col-md-5">
+      <label class="form-label" for="guest">Khách</label>
+      <select class="form-select" id="guest" name="guest">
+        <option value="">Tất cả khách</option>
+        {% for g in guests %}<option value="{{ g.USER_ID }}" {{ 'selected' if guest == g.USER_ID }}>#{{ g.USER_ID }} · {{ g.FULL_NAME }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label" for="year">Năm</label>
+      <input class="form-control" type="number" id="year" name="year" value="{{ year }}" min="2000" max="2100" required>
+    </div>
+    <div class="col-md-2 d-grid"><button class="btn btn-outline-primary">Tra cứu</button></div>
+  </form>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-2">
+      <thead><tr><th>Mã KH</th><th>Họ tên</th><th>Hạng năm {{ year }}</th></tr></thead>
+      <tbody>
+      {% for t in tiers %}
+        <tr>
+          <td>#{{ t.USER_ID }}</td><td>{{ t.FULL_NAME }}</td>
+          <td>{% if t.TIER %}<span class="badge text-bg-{{ TIER_CLS[t.TIER] }}">{{ t.TIER }}</span>
+              {% else %}<span class="text-danger">Không hợp lệ (năm hoặc khách sai)</span>{% endif %}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="3" class="text-body-secondary">Không tìm thấy khách.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="small text-body-secondary mb-0">Nguồn: <code>fn_GuestTier</code> — tổng giá trị đơn COMPLETED trả phòng trong năm:
+    PLATINUM ≥ 50 tr, GOLD ≥ 20 tr, SILVER ≥ 5 tr, còn lại BRONZE.</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if chart %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const rows = {{ chart|tojson }};
+new Chart(document.getElementById('chart'), {
+  type: 'bar',
+  data: {labels: rows.map(r => r.label), datasets: [{data: rows.map(r => r.value), backgroundColor: '#0d6efd', borderRadius: 4}]},
+  options: {
+    indexAxis: 'y', maintainAspectRatio: false,
+    plugins: {legend: {display: false},
+              tooltip: {callbacks: {label: c => c.raw.toLocaleString('vi-VN') + ' ' + rows[c.dataIndex].currency}}},
+    scales: {x: {beginAtZero: true, ticks: {callback: v => (v / 1e6).toLocaleString('vi-VN') + ' tr'}}}
+  }
+});
+</script>
+{% endif %}
+{% endblock %}
