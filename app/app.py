@@ -74,15 +74,20 @@ def to_date(v):
 
 def to_decimal(v):
     try:
-        return Decimal(v) if v else None
+        d = Decimal(v) if v else None
     except InvalidOperation:
         return None
+    # NaN/Infinity và số vượt DECIMAL(28,2) làm thủ tục lỗi tràn số -> coi như không lọc.
+    return d if d is not None and d.is_finite() and abs(d) < Decimal('1e26') else None
 
 
 def safe_next():
     """Trang quay về sau khi sửa/xóa (giữ bộ lọc của danh sách); chỉ nhận đường dẫn nội bộ."""
     nxt = request.values.get('next', '')
-    return nxt if nxt.startswith('/') and not nxt.startswith(('//', '/\\')) else url_for('booking_list')
+    # Ký tự điều khiển bị chặn: trình duyệt bỏ tab/xuống dòng nên '/\t/evil.com' thành '//evil.com'.
+    if any(ord(ch) < 32 for ch in nxt) or not nxt.startswith('/') or nxt.startswith(('//', '/\\')):
+        return url_for('booking_list')
+    return nxt
 
 
 @app.template_filter()
@@ -263,7 +268,9 @@ def dashboard():
     tiers = query('''SELECT u.USER_ID, u.FULL_NAME, dbo.fn_GuestTier(u.USER_ID, %(y)s) AS TIER
                      FROM dbo.GUEST g JOIN dbo.[USER] u ON u.USER_ID = g.USER_ID
                      WHERE %(g)s IS NULL OR g.USER_ID = %(g)s
-                     ORDER BY u.USER_ID''', {'y': year, 'g': guest})
+                     ORDER BY u.USER_ID''',
+                  # Năm ngoài 1..9999 truyền 0 để fn_GuestTier tự trả NULL, tránh lỗi tràn kiểu INT.
+                  {'y': year if 1 <= year <= 9999 else 0, 'g': guest})
     return render_template('dashboard.html', rows=rows, totals=totals, chart=chart, args=args,
                            cities=query('SELECT DISTINCT CITY FROM dbo.ACCOMMODATION ORDER BY CITY'),
                            guests=guests(), tiers=tiers, year=year, guest=guest)

@@ -91,8 +91,9 @@ finally:
     post(f'/bookings/{bid}/delete')
 check('xoa: don CANCELLED chua thanh toan', not query('SELECT 1 AS x FROM dbo.BOOKING WHERE BOOKING_ID = %s', (bid,)))
 check('xoa: don da thanh toan bi chan (51302)', '[51302]' in post('/bookings/1/delete'))
-check('next ngoai trang bi bo qua', client.post('/bookings/999999/delete', data={'next': '//evil.com'})
-      .headers['Location'] == '/bookings')
+for evil in ('//evil.com', '/\\evil.com', '/\t/evil.com', '/\r\n/evil.com', 'https://evil.com'):
+    check(f'next ngoai trang bi bo qua: {evil!r}',
+          client.post('/bookings/999999/delete', data={'next': evil}).headers['Location'] == '/bookings')
 
 # ---------- 3.3 Dashboard ----------
 html = get('/dashboard')
@@ -102,6 +103,9 @@ check('dashboard: HAVING doanh thu toi thieu', 'Saigon Majestic Hotel' not in ge
 check('dashboard: khong co du lieu', 'Không có doanh thu' in get('/dashboard?from=2030-01-01'))
 check('dashboard: hang khach #3 nam 2026', '>SILVER</span>' in get('/dashboard?guest=3&year=2026'))
 check('dashboard: nam khong hop le -> NULL', 'Không hợp lệ' in get('/dashboard?guest=3&year=0'))
+check('dashboard: nam qua lon khong lam sap trang', 'Không hợp lệ' in get('/dashboard?guest=3&year=99999999999'))
+for bad in ('NaN', 'Infinity', '1e40'):
+    check(f'dashboard: min_revenue={bad} bi bo qua', client.get(f'/dashboard?min_revenue={bad}').status_code == 200)
 
 # ---------- Tài khoản DB của app không ghi trực tiếp được ----------
 try:

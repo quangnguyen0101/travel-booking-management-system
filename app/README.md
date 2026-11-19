@@ -52,7 +52,7 @@ Sửa `.env` nếu khác cấu hình mặc định (`DB_PORT=14333` khi dùng Do
 .venv\Scripts\python test_app.py
 ```
 
-Script chạy luồng đầy đủ thêm → tìm → sửa → đổi trạng thái → xóa → dashboard trên DB thật. Kết quả mong đợi là **31/31 PASS**. Script tạo 1 đơn test (ngày nhận phòng khoảng 400 ngày sau hôm nay) rồi tự xóa, không làm đổi dữ liệu mẫu.
+Script chạy luồng đầy đủ thêm → tìm → sửa → đổi trạng thái → xóa → dashboard trên DB thật. Kết quả mong đợi là **39/39 PASS**. Script tạo 1 đơn test (ngày nhận phòng khoảng 400 ngày sau hôm nay) rồi tự xóa, không làm đổi dữ liệu mẫu.
 
 Ca kiểm tra cuối xác nhận `btl2_app` không chạy được `DELETE` trực tiếp (lỗi 229).
 
