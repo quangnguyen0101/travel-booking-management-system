@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block title %}Doanh thu{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <div class="eyebrow">sp_Revenue_By_Accommodation · fn_GuestTier</div>
+    <h1 class="title">Doanh thu theo cơ sở</h1>
+  </div>
+  <form class="d-flex flex-wrap align-items-end gap-2" method="get">
+    {% for k in ('guest', 'year') if args[k] %}<input type="hidden" name="{{ k }}" value="{{ args[k] }}">{% endfor %}
+    <div>
+      <label class="form-label" for="city">Thành phố</label>
+      <select class="form-select" id="city" name="city" style="min-width: 140px">
+        <option value="">Tất cả</option>
+        {% for c in cities %}<option {{ 'selected' if args.city == c.CITY }}>{{ c.CITY }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label" for="from">Thanh toán từ</label>
+      <input class="form-control" type="date" id="from" name="from" value="{{ args['from'] }}">
+    </div>
+    <div>
+      <label class="form-label" for="to">Đến ngày</label>
+      <input class="form-control" type="date" id="to" name="to" value="{{ args['to'] }}">
+    </div>
+    <div>
+      <label class="form-label" for="min_revenue">Tối thiểu (VND)</label>
+      <input class="form-control mono" type="number" id="min_revenue" name="min_revenue" value="{{ args.min_revenue }}" min="0" step="1000" placeholder="0" style="width: 140px">
+    </div>
+    <button class="btn btn-dark">Áp dụng</button>
+  </form>
+</header>
+
+<div class="bento">
+  {% for cur, t in totals.items() %}
+  <section class="kpi" style="flex: 2 1 420px; min-height: 170px">
+    <div class="d-flex justify-content-between small muted"><span>Tổng doanh thu PAID</span><span>{{ cur }}</span></div>
+    <b style="font-size: 48px">{{ t.revenue|money }}</b>
+    <div class="d-flex gap-1" style="height: 8px" aria-hidden="true">
+      {% for r in rows if r.CURRENCY == cur %}<div style="flex: {{ r.TOTAL_REVENUE|float }} 1 0; background: {{ 'var(--accent)' if loop.index <= 2 else '#A3A3A3' }}"></div>{% endfor %}
+    </div>
+  </section>
+  <section class="kpi" style="flex: 1 1 200px"><span class="small muted">Khoản thanh toán PAID</span><b>{{ t.bookings }}</b><span class="small muted">đơn có thanh toán thành công</span></section>
+  <section class="kpi" style="flex: 1 1 200px"><span class="small muted">Trung bình / khoản</span><b>{{ (t.revenue / t.bookings)|money }}</b><span class="small muted">{{ cur }}</span></section>
+  <section class="kpi" style="flex: 1 1 200px"><span class="small muted">Cơ sở có doanh thu</span><b>{{ t.places }}</b><span class="small muted">sau bộ lọc</span></section>
+  {% endfor %}
+
+  <section style="flex: 3 1 520px">
+    <h2 class="h6 fw-semibold mb-3" style="font-size: 13px">Doanh thu theo cơ sở</h2>
+    {% if chart %}<div style="position: relative; height: {{ 60 + 40 * chart|length }}px"><canvas id="chart" aria-label="Biểu đồ doanh thu theo cơ sở" role="img"></canvas></div>
+    {% else %}<p class="muted mb-0">Không có doanh thu khớp bộ lọc.</p>{% endif %}
+  </section>
+
+  <section class="p-0 table-responsive" style="flex: 2 1 380px">
+    <table class="table align-middle">
+      <thead><tr><th>Cơ sở</th><th class="text-end">Đơn</th><th class="text-end">Tổng</th><th class="text-end">TB/khoản</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td>{{ r.ACCOMMODATION_NAME }} <span class="muted">· {{ r.CITY }}</span></td>
+          <td class="mono small text-end">{{ r.BOOKING_COUNT }}</td>
+          <td class="mono small text-end">{{ r.TOTAL_REVENUE|money }}</td>
+          <td class="mono small text-end muted">{{ r.AVG_PAYMENT_AMOUNT|money }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="text-center muted py-4">Không có dữ liệu.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section style="flex: 1 1 100%">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+      <div>
+        <h2 class="fw-semibold mb-1" style="font-size: 13px">Hạng khách năm {{ year }}</h2>
+        <div class="small muted">Tổng giá trị đơn COMPLETED trả phòng trong năm · PLATINUM ≥ 50 tr, GOLD ≥ 20 tr, SILVER ≥ 5 tr, còn lại BRONZE</div>
+      </div>
+      <form class="d-flex flex-wrap align-items-end gap-2" method="get">
+        {% for k in ('city', 'from', 'to', 'min_revenue') if args[k] %}<input type="hidden" name="{{ k }}" value="{{ args[k] }}">{% endfor %}
+        <div>
+          <label class="form-label" for="guest">Khách</label>
+          <select class="form-select" id="guest" name="guest" style="min-width: 200px">
+            <option value="">Tất cả khách</option>
+            {% for g in guests %}<option value="{{ g.USER_ID }}" {{ 'selected' if guest == g.USER_ID }}>#{{ g.USER_ID }} · {{ g.FULL_NAME }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="year">Năm</label>
+          <input class="form-control mono" type="number" id="year" name="year" value="{{ year }}" min="2000" max="2100" required style="width: 100px">
+        </div>
+        <button class="btn btn-primary">Tra cứu</button>
+      </form>
+    </div>
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead><tr><th>Mã KH</th><th>Họ tên</th><th class="text-end">Hạng</th></tr></thead>
+        <tbody>
+        {% for t in tiers %}
+          <tr>
+            <td class="mono small">#{{ t.USER_ID }}</td>
+            <td>{{ t.FULL_NAME }}</td>
+            <td class="text-end">{% if t.TIER %}<span class="tag tag-{{ t.TIER }}">{{ t.TIER }}</span>
+                {% else %}<span class="text-danger">Không hợp lệ (năm hoặc khách sai)</span>{% endif %}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="3" class="muted">Không tìm thấy khách.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if chart %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const rows = {{ chart|tojson }};
+Chart.defaults.font.family = 'Geist, system-ui, sans-serif';
+Chart.defaults.color = '#595959';
+// Đợi font Geist tải xong rồi mới vẽ, nếu không Chart.js đo nhãn theo font dự phòng và cắt chữ.
+document.fonts.ready.then(() => new Chart(document.getElementById('chart'), {
+  type: 'bar',
+  data: {labels: rows.map(r => r.label),
+         datasets: [{data: rows.map(r => r.value), backgroundColor: rows.map((r, i) => i < 2 ? '#1D4ED8' : '#737373'), barThickness: 18}]},
+  options: {
+    indexAxis: 'y', maintainAspectRatio: false, animation: false, layout: {padding: {right: 20}},
+    plugins: {legend: {display: false},
+              tooltip: {callbacks: {label: c => c.raw.toLocaleString('vi-VN') + ' ' + rows[c.dataIndex].currency}}},
+    scales: {
+      x: {beginAtZero: true, grid: {color: '#EDEDED'}, border: {display: false},
+          ticks: {font: {family: 'Geist Mono'}, callback: v => (v / 1e6).toLocaleString('vi-VN') + ' tr'}},
+      y: {grid: {display: false}, ticks: {color: '#111111'}}
+    }
+  }
+}));
+</script>
+{% endif %}
+{% endblock %}
