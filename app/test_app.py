@@ -1,6 +1,6 @@
 """Kiểm tra tích hợp 3 màn hình trên DB thật (cấu hình theo app/.env).
 
-Chạy:  python test_app.py
+Chạy:  python app/test_app.py  (từ thư mục gốc repo)
 Tạo 1 đơn test (ngày nhận phòng cách hôm nay ~400 ngày) rồi tự xóa; dữ liệu mẫu không bị đổi.
 """
 from datetime import date, timedelta

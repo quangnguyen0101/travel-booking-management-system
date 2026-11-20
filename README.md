@@ -28,6 +28,7 @@ Hệ thống quản lý đặt phòng du lịch (tham khảo Booking.com), tiế
 ```text
 travel-booking-management-system/
 ├─ README.md
+├─ requirements.txt           # Flask, pymssql, python-dotenv (venv đặt ở root)
 ├─ sql/                       # Script chạy trên SQL Server, theo đúng thứ tự số
 │  ├─ 01_schema.sql           # Tạo DB + 36 bảng + PK/FK/UNIQUE/CHECK/DEFAULT
 │  ├─ 02_seed.sql             # Dữ liệu mẫu toàn bộ 36 bảng
@@ -49,7 +50,6 @@ travel-booking-management-system/
 │  ├─ app.py
 │  ├─ templates/              # base, form, list, dashboard
 │  ├─ test_app.py             # Test tích hợp trên DB thật (39 ca)
-│  ├─ requirements.txt
 │  └─ .env.example
 ├─ evidence/                  # Ảnh minh chứng gốc, đã đổi tên theo đầu việc
 ├─ docs/
@@ -98,15 +98,31 @@ docker exec btl2-mssql bash -lc "$SQLCMD -i /tmp/repo/sql/01_schema.sql"
 
 ### Cách 3 — chạy ứng dụng
 
+Tạo venv ở **thư mục gốc repo**, không cần `cd app`:
+
+**Windows**
+
 ```powershell
-cd app
 py -3.12 -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
-copy .env.example .env
-.venv\Scripts\python app.py
+copy app\.env.example app\.env
+.venv\Scripts\python app\app.py
 ```
 
-Mở <http://localhost:5000>. Chi tiết cấu hình và các giới hạn xem `app/README.md`.
+**Linux**
+
+```bash
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cp app/.env.example app/.env
+.venv/bin/python app/app.py
+```
+
+Sửa `app/.env` cho khớp máy (`DB_PORT=14333` nếu SQL Server chạy Docker, `1433` nếu cài native), rồi mở <http://localhost:5000>. Chi tiết cấu hình và các giới hạn xem `app/README.md`.
+
+> Nếu repo nằm trong Google Drive/FUSE trên Linux, `python3 -m venv .venv` có thể lỗi `lib64` do filesystem không hỗ trợ symlink. Khi đó tạo venv ở ổ local:
+> `python3 -m venv ~/.venvs/btl2 && ~/.venvs/btl2/bin/pip install -r requirements.txt`
+> rồi chạy `~/.venvs/btl2/bin/python app/app.py`.
 
 ### Tạo lại DB từ đầu
 

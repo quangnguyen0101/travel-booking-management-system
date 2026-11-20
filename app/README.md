@@ -34,22 +34,38 @@ Nếu dùng SQL Server cài trên máy (không phải Docker), cần thêm 2 bư
 
 Nếu dùng Docker theo README gốc thì cổng là `14333`.
 
-### 2. Chạy app (PowerShell, từ thư mục gốc repo)
+### 2. Chạy app (từ thư mục gốc repo)
+
+**Windows**
 
 ```powershell
-cd app
 py -3.12 -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
-copy .env.example .env
-.venv\Scripts\python app.py
+copy app\.env.example app\.env
+.venv\Scripts\python app\app.py
 ```
 
-Sửa `.env` nếu khác cấu hình mặc định (`DB_PORT=14333` khi dùng Docker; đổi `DB_PASSWORD` nếu đã đổi trong `08_app_login.sql`), rồi mở <http://localhost:5000>.
+**Linux**
+
+```bash
+python3.12 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+cp app/.env.example app/.env
+.venv/bin/python app/app.py
+```
+
+Sửa `app/.env` nếu khác cấu hình mặc định (`DB_PORT=14333` khi dùng Docker; đổi `DB_PASSWORD` nếu đã đổi trong `08_app_login.sql`), rồi mở <http://localhost:5000>.
 
 ### 3. Kiểm tra tích hợp
 
 ```powershell
-.venv\Scripts\python test_app.py
+.venv\Scripts\python app\test_app.py
+```
+
+Linux:
+
+```bash
+.venv/bin/python app/test_app.py
 ```
 
 Script chạy luồng đầy đủ thêm → tìm → sửa → đổi trạng thái → xóa → dashboard trên DB thật. Kết quả mong đợi là **39/39 PASS**. Script tạo 1 đơn test (ngày nhận phòng khoảng 400 ngày sau hôm nay) rồi tự xóa, không làm đổi dữ liệu mẫu.
