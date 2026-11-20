@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Sửa đơn ' ~ booking.BOOKING_CODE if booking else 'Thêm đơn' }}{% endblock %}
+{% block content %}
+{% macro invalid(name) %}{{ ' is-invalid' if err_field == name }}{% endmacro %}
+<header class="page-head">
+  <div>
+    <a class="small text-decoration-none" href="{{ back or url_for('booking_list') }}">← Danh sách booking</a>
+    {% if booking %}
+    <h1 class="title d-flex align-items-center gap-3">
+      <span class="mono fw-medium">{{ booking.BOOKING_CODE }}</span>
+      <span class="st st-{{ booking.STATUS }} panel px-2 py-1">{{ booking.STATUS }}</span>
+    </h1>
+    {% else %}
+    <h1 class="title">Thêm đơn đặt phòng</h1>
+    {% endif %}
+  </div>
+  <span class="small muted">
+    {% if booking %}Đặt ngày {{ booking.BOOKING_DATE.strftime('%d/%m/%Y') }} · {{ booking.FULL_NAME }} (#{{ booking.USER_ID }}) · <span class="mono">sp_Booking_Update</span>
+    {% else %}Đơn mới luôn ở trạng thái PENDING · <span class="mono">sp_Booking_Insert</span>{% endif %}
+  </span>
+</header>
+
+<div class="d-flex flex-wrap gap-3 align-items-start">
+  <form id="booking-form" class="panel" style="flex: 999 1 560px; min-width: 0" method="post">
+    <fieldset class="p-3">
+      <legend class="section-label">Khách · phòng</legend>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="user_id">Khách hàng</label>
+          {% if booking %}
+          <input class="form-control" id="user_id" value="#{{ booking.USER_ID }} · {{ booking.FULL_NAME }}" disabled>
+          {% else %}
+          <select class="form-select{{ invalid('user_id') }}" id="user_id" name="user_id" required>
+            <option value="">— Chọn khách —</option>
+            {% for g in guests %}<option value="{{ g.USER_ID }}" {{ 'selected' if v.user_id == g.USER_ID|string }}>#{{ g.USER_ID }} · {{ g.FULL_NAME }}</option>{% endfor %}
+          </select>
+          {% endif %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="room">{{ 'Hạng phòng · ' ~ booking.ACCOMMODATION_NAME if booking else 'Cơ sở · hạng phòng' }}</label>
+          <select class="form-select{{ invalid('room') }}" id="room" name="room" required>
+            <option value="">— Chọn hạng phòng —</option>
+            {% for a in rooms|groupby('ACCOMMODATION_ID') %}
+            <optgroup label="{{ a.list[0].ACCOMMODATION_NAME }} ({{ a.list[0].CITY }})">
+              {% for r in a.list %}{% set key = r.ACCOMMODATION_ID ~ '|' ~ r.ROOM_NAME %}
+              <option value="{{ key }}" data-adults="{{ r.ADULTS }}" data-children="{{ r.CHILDREN }}" {{ 'selected' if v.room == key }}>
+                {{ r.ROOM_NAME }} — tối đa {{ r.ADULTS }} NL + {{ r.CHILDREN }} TE/phòng</option>
+              {% endfor %}
+            </optgroup>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="p-3 border-top">
+      <legend class="section-label">Lưu trú</legend>
+      <div class="row g-3">
+        <div class="col-6 col-md-3">
+          <label class="form-label" for="check_in">Nhận phòng</label>
+          <input class="form-control{{ invalid('check_in') }}" type="date" id="check_in" name="check_in" value="{{ v.check_in }}"
+                 {% if not booking %}min="{{ today }}"{% endif %} required>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label" for="check_out">Trả phòng</label>
+          <input class="form-control{{ invalid('check_out') }}" type="date" id="check_out" name="check_out" value="{{ v.check_out }}" required>
+          <div class="form-text mono" id="nights"></div>
+        </div>
+        <div class="col-4 col-md-2">
+          <label class="form-label" for="quantity">Số phòng</label>
+          <input class="form-control mono{{ invalid('quantity') }}" type="number" id="quantity" name="quantity" value="{{ v.quantity }}" min="1" max="100" required>
+        </div>
+        <div class="col-4 col-md-2">
+          <label class="form-label" for="adults">Người lớn</label>
+          <input class="form-control mono{{ invalid('adults') }}" type="number" id="adults" name="adults" value="{{ v.adults }}" min="1" max="1000" required>
+        </div>
+        <div class="col-4 col-md-2">
+          <label class="form-label" for="children">Trẻ em</label>
+          <input class="form-control mono{{ invalid('children') }}" type="number" id="children" name="children" value="{{ v.children }}" min="0" max="1000" required>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="p-3 border-top">
+      <legend class="section-label">{{ 'Trạng thái · ghi chú' if booking else 'Voucher · ghi chú' }}</legend>
+      <div class="row g-3">
+        {% if booking %}
+        <div class="col-md-3">
+          <label class="form-label" for="status">Trạng thái</label>
+          <select class="form-select{{ invalid('status') }}" id="status" name="status">
+            {% for s in STATUSES %}<option {{ 'selected' if v.status == s }}>{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+        {% else %}
+        <div class="col-md-3">
+          <label class="form-label" for="voucher_code">Mã voucher (tùy chọn)</label>
+          <input class="form-control mono{{ invalid('voucher_code') }}" id="voucher_code" name="voucher_code" value="{{ v.voucher_code }}" maxlength="50">
+        </div>
+        {% endif %}
+        <div class="col-md-2">
+          <label class="form-label" for="arrival_time">Giờ đến dự kiến</label>
+          <input class="form-control" type="time" id="arrival_time" name="arrival_time" value="{{ v.arrival_time }}">
+        </div>
+        <div class="col-md-7">
+          <label class="form-label" for="special_requests">Yêu cầu đặc biệt</label>
+          <input class="form-control" id="special_requests" name="special_requests" value="{{ v.special_requests }}" maxlength="1000">
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="d-flex flex-wrap align-items-center gap-2 px-3 py-2 border-top" style="background: #FAFAFA">
+      <button class="btn btn-primary">{{ 'Lưu thay đổi' if booking else 'Tạo đơn' }}</button>
+      <a class="btn btn-outline-secondary" href="{{ back or url_for('booking_list') }}">Hủy</a>
+      {% if booking %}
+      <span class="small muted">Chỉ đơn PENDING chưa thanh toán mới đổi được phòng, ngày, số khách.</span>
+      <button class="btn btn-outline-danger ms-auto" form="delete-form">Xóa đơn</button>
+      {% endif %}
+    </div>
+  </form>
+
+  <aside class="panel" style="flex: 1 1 280px" aria-label="Tóm tắt">
+    {% if booking %}
+    <dl class="m-0 p-3 d-grid gap-2" style="grid-template-columns: 1fr auto">
+      <dt class="fw-normal muted">Giá chốt / đêm</dt><dd class="m-0 mono text-end">{{ booking.ROOM_PRICE_AT_BOOKING|money }}</dd>
+      <dt class="fw-normal muted">Đêm × phòng</dt><dd class="m-0 mono text-end">{{ booking.NIGHTS }} × {{ booking.RESERVED_QUANTITY or 0 }}</dd>
+    </dl>
+    <dl class="m-0 p-3 border-top d-grid gap-2" style="grid-template-columns: 1fr auto">
+      <dt class="fw-normal muted">Thanh toán</dt><dd class="m-0 text-end">{{ booking.PAYMENT_STATUS or 'chưa có' }}</dd>
+      <dt class="fw-normal muted">Số tiền</dt><dd class="m-0 mono text-end">{{ booking.AMOUNT|money }}</dd>
+      <dt class="fw-normal muted">Hoàn nếu hủy hôm nay</dt><dd class="m-0 mono text-end">{{ booking.REFUND|money }}</dd>
+    </dl>
+    <p class="small muted m-0 px-3 pb-3"><span class="mono">fn_CancelRefund</span>: ≥ 7 ngày trước nhận phòng hoàn 100%, 3–6 ngày 50%, dưới 3 ngày 0%. Chỉ tính khoản PAID.</p>
+    {% else %}
+    <div class="p-3">
+      <div class="section-label">Quy tắc kiểm tra</div>
+      <ul class="small muted ps-3 mb-0 d-grid gap-1">
+        <li>Nhận phòng từ hôm nay; tối đa 30 đêm.</li>
+        <li>Số khách không vượt sức chứa hạng phòng × số phòng.</li>
+        <li>Hạng phòng còn đủ phòng trống trong khoảng ngày.</li>
+        <li>Voucher phải thuộc khách, còn hạn, chưa dùng.</li>
+      </ul>
+    </div>
+    {% endif %}
+  </aside>
+</div>
+{% if booking %}
+<form id="delete-form" method="post" action="{{ url_for('booking_delete', booking_id=booking.BOOKING_ID) }}"
+      onsubmit="return confirm('Xóa đơn {{ booking.BOOKING_CODE }}? Không hoàn tác được.')">
+  <input type="hidden" name="next" value="{{ back }}">
+</form>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Lớp kiểm tra phía client, cùng quy tắc với sp_Booking_ValidateStay; thủ tục vẫn kiểm tra lại.
+const f = document.getElementById('booking-form'), el = n => f.elements[n];
+function check() {
+  const ci = el('check_in').value, co = el('check_out').value;
+  const nights = ci && co ? Math.round((new Date(co) - new Date(ci)) / 864e5) : null;
+  el('check_out').setCustomValidity(nights === null ? '' : nights <= 0 ? 'Ngày trả phòng phải sau ngày nhận phòng.'
+    : nights > 30 ? `Mỗi đơn tối đa 30 đêm, đang chọn ${nights} đêm.` : '');
+  document.getElementById('nights').textContent = nights > 0 ? `${nights} đêm` : '';
+  if (ci) el('check_out').min = ci;
+
+  const opt = el('room').selectedOptions[0], q = Math.max(+el('quantity').value || 1, 1);
+  const a = +el('adults').value, c = +el('children').value;
+  let msg = '';
+  if (opt && opt.dataset.adults) {
+    const maxA = opt.dataset.adults * q, maxAll = (+opt.dataset.adults + +opt.dataset.children) * q;
+    if (a > maxA) msg = `${q} phòng này nhận tối đa ${maxA} người lớn.`;
+    else if (a + c > maxAll) msg = `${q} phòng này nhận tối đa ${maxAll} khách (người lớn + trẻ em).`;
+  }
+  el('adults').setCustomValidity(msg);
+}
+f.addEventListener('input', check);
+f.addEventListener('change', check);
+check();
+</script>
+{% endblock %}
