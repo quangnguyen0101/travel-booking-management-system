@@ -1,0 +1,3 @@
+# Chuẩn hóa line-ending: lưu LF trong repo và checkout LF trên mọi hệ điều hành.
+# Nhờ vậy file bị công cụ trên Windows đổi sang CRLF sẽ không hiện thành diff giả.
+* text=auto eol=lf
