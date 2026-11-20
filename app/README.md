@@ -23,7 +23,7 @@ App **không có** câu INSERT/UPDATE/DELETE nào. SELECT trực tiếp chỉ d�
 
 ### 1. Chuẩn bị CSDL
 
-Chạy các script theo README gốc: `01` → `02` → `03` → `05` → `06` → `07`. **Bỏ qua `04`** cho tới khi xử lý xong [issue #1](https://github.com/quangnguyen0101/travel-booking-management-system/issues/1), vì trigger 04 làm `sp_Booking_Insert` lỗi 515 và form thêm sẽ không tạo được đơn.
+Chạy các script theo README gốc: `01` → `02` → `03` → `04` → `05` → `06` → `07`. Trigger `04` đã được sửa để chạy chung với `sp_Booking_Insert` (không còn lỗi 515).
 
 Sau đó chạy `sql/08_app_login.sql` để tạo tài khoản `btl2_app` (chỉ có quyền SELECT + EXECUTE).
 
