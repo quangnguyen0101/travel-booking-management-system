@@ -244,10 +244,6 @@ BEGIN
 
             EXEC dbo.sp_Booking_ValidateStay @accom, @RoomName, @Quantity, @CheckIn, @CheckOut,
                                              @Adults, @Children, @BookingId, @price OUTPUT;
-
-            UPDATE dbo.BOOKING_ROOM_TYPE
-            SET ROOM_NAME = @RoomName, RESERVED_QUANTITY = @Quantity, ROOM_PRICE_AT_BOOKING = @price
-            WHERE BOOKING_ID = @BookingId;
         END;
 
         IF @Status IS NOT NULL AND @Status <> @cur
@@ -270,6 +266,17 @@ BEGIN
             ESTIMATED_ARRIVAL_TIME = ISNULL(@EstimatedArrivalTime, ESTIMATED_ARRIVAL_TIME),
             SPECIAL_REQUESTS = ISNULL(@SpecialRequests, SPECIAL_REQUESTS)
         WHERE BOOKING_ID = @BookingId;
+
+        -- Cập nhật chi tiết phòng SAU khi BOOKING đã có ngày mới: trigger sức chứa
+        -- đọc CHECK_IN_DATE/CHECK_OUT_DATE từ BOOKING nên phải thấy khoảng ngày cuối
+        -- cùng, tránh chặn nhầm khi một lần sửa vừa đổi ngày vừa đổi số lượng.
+        IF @RoomName <> @curRoom OR @Quantity <> @curQty OR @CheckIn <> @curIn OR @CheckOut <> @curOut
+           OR @Adults <> @curAdults OR @Children <> @curChildren
+        BEGIN
+            UPDATE dbo.BOOKING_ROOM_TYPE
+            SET ROOM_NAME = @RoomName, RESERVED_QUANTITY = @Quantity, ROOM_PRICE_AT_BOOKING = @price
+            WHERE BOOKING_ID = @BookingId;
+        END;
 
         COMMIT TRANSACTION;
     END TRY
