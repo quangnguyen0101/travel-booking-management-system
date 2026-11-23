@@ -2,7 +2,7 @@
 
 > Đề tài: **Hệ thống quản lý đặt phòng du lịch (tham khảo booking.com)** — tiếp nối BTL1.
 > Đọc [[BTL2 - Kế hoạch thực hiện]] trước khi nhận việc. Deadline nội bộ **22/11/2025**; **nộp nhóm qua group Zalo**, nhóm trưởng nộp LMS **CN 23/11/2025** (đã chốt).
-> **Trạng thái: ĐÃ VOTE.** DBMS đã chốt: **MS SQL Server**; stack app do 3 người việc 7 chốt.
+> **Trạng thái: ĐÃ VOTE.** DBMS đã chốt: **MS SQL Server**; stack app (Flask 3 + `pymssql`) chốt ở kickoff.
 > **⚠️ Luật của đề:** **mỗi SV phải viết ít nhất 1 câu ở phần 2** (trigger/thủ tục/hàm). Vì vậy mỗi người đã nhận đúng 1 việc trong nhóm 2–6; việc app/báo cáo chỉ là việc phụ.
 
 ## 1. Bảng phân công (đã chốt)
@@ -19,16 +19,17 @@
 | 4 | Trigger thuộc tính dẫn xuất (2.2.2) — chọn thuộc tính | Nguyễn Trương Đăng Quang | 16/11 | ✅ | ☐ |
 | 5 | 2 thủ tục truy vấn (2.3) | Đỗ Lê Chí Kiên | 16/11 | ✅ | ☐ |
 | 6 | 2 hàm (2.4) | Phan Anh Khoa | 16/11 | ✅ | ☐ |
-| 7 | 3 màn hình ứng dụng (3.1–3.3) — **việc phụ, 3 người** | Nguyễn Trương Đăng Quang, Phan Anh Khoa, Phạm Nhật Quang | 20/11 | Đã có việc 2–6 | ☐ |
-| 8 | Báo cáo + demo + nộp (Zalo → LMS) | Cả nhóm | 22/11 | — | ☐ |
+| 7 | 3 màn hình ứng dụng (3.1–3.3) — **việc phụ, 1 người** | Phạm Nhật Quang | 20/11 | Đã có việc 2–6 | ☐ |
+| 8a | Báo cáo + slide + tổng hợp nộp (Zalo → LMS) — **việc phụ** | Nguyễn Trương Đăng Quang | 22/11 | Đã có việc 2–6 | ☐ |
+| 8b | Kiểm thử & QA toàn bộ + checklist demo — **việc phụ** | Phan Anh Khoa | 22/11 | Đã có việc 2–6 | ☐ |
 
 **Tóm tắt:** 5/5 thành viên có **1 đầu việc phần 2 + 1 việc phụ**:
 
-- **Lê Thế Nguyên** — việc 3 + việc 1
-- **Đỗ Lê Chí Kiên** — việc 5 + việc 1
-- **Phạm Nhật Quang** — việc 2 + việc 7
-- **Phan Anh Khoa** — việc 6 + việc 7
-- **Nguyễn Trương Đăng Quang** — việc 4 + việc 7
+- **Lê Thế Nguyên** — việc 3 + việc 1 (+ ảnh minh chứng trigger)
+- **Đỗ Lê Chí Kiên** — việc 5 + việc 1 (+ demo/video)
+- **Phạm Nhật Quang** — việc 2 + việc 7 (toàn bộ app)
+- **Phan Anh Khoa** — việc 6 + việc 8b (kiểm thử)
+- **Nguyễn Trương Đăng Quang** — việc 4 + việc 8a (báo cáo)
 
 ## 2. Timeline tổng (13 ngày: 10/11–22/11)
 
@@ -39,9 +40,9 @@
 | 13/11 | V1 seed + review; **M1: DB sạch, ≥ 5 rows/bảng** | Review chéo V1 |
 | 13–15/11 | V2 CRUD, V3 trigger ràng buộc, V4 trigger dẫn xuất (bắt đầu) | Proc/trigger chạy |
 | 15–16/11 | V4 hoàn tất, V5 query proc, V6 hàm; **M2: xong phần 2** | Test case pass; bản sơ bộ |
-| 15–19/11 | V7 app (3 người): form → list → dashboard | Kết nối DB thật |
+| 15–19/11 | V7 app (1 người — Phạm Nhật Quang): form → list → dashboard | Kết nối DB thật |
 | 20/11 | **M3: demo 3 màn hình** | Cả nhóm chạy thử |
-| 20–21/11 | V8 báo cáo, ảnh, slide, video dự phòng | Bản nháp đủ mục |
+| 20–21/11 | V8a báo cáo/slide (Nguyễn Trương Đăng Quang) + V8b kiểm thử (Phan Anh Khoa) | Bản nháp đủ mục + log test đầy đủ |
 | 22/11 | **M4: gửi group Zalo + bản in; nhóm trưởng nộp LMS** | File + link trong Zalo |
 | 23/11 | **Hạn nộp LMS (đã chốt)** | — |
 
@@ -109,25 +110,36 @@
 
 ### Việc 7 — 3 màn hình ứng dụng → đáp ứng 3.1–3.3 (3đ)
 
-- **Số người: 3** — **Nguyễn Trương Đăng Quang, Phan Anh Khoa, Phạm Nhật Quang**. Cả 3 đều đã có đầu việc phần 2. **Cách chia vai trò (backend / UI / integration-test) chưa chốt — 3 bạn tự thống nhất ở kickoff.**
+- **Người: Phạm Nhật Quang.** Cả 3 màn hình do một người làm để giữ thống nhất một stack và tránh lệch giao diện.
 - **3.1 Form booking:** `/bookings/new`, `/bookings/<id>/edit`, nút xóa — gọi 3 proc ở việc 2; validate client + hiển thị message từ `THROW`; không tự viết INSERT/UPDATE/DELETE trong app.
 - **3.2 Danh sách booking:** `/bookings` — gọi `sp_Booking_List`; ô search (khách/phòng), filter trạng thái, khoảng ngày, sort, phân trang; sửa/xóa ngay trên dòng; báo lỗi logic rõ ràng.
 - **3.3 Dashboard:** `/dashboard` — gọi `sp_Revenue_By_Accommodation` + `fn_GuestTier`; bảng doanh thu + biểu đồ (thư viện tùy stack) + tra cứu hạng khách.
-- **Stack:** **chưa chốt** — người nhận việc 7 đề xuất (gợi ý: Flask/Bootstrap, Node/Express, PHP...), cả nhóm chốt ở kickoff. Yêu cầu cố định: kết nối CSDL thật; CRUD gọi proc; cấu hình DB trong `.env`; README hướng dẫn chạy; tài khoản DB riêng, không dùng root.
-- **Phối hợp:** 3 người tự chia việc theo 3 nhóm gợi ý (backend route + gọi proc / UI template / integration + test lỗi), chốt cùng stack ở kickoff. Không cố định ai làm nhóm nào trước khi họp.
+- **Stack:** **Flask 3 + `pymssql`** (đã chốt; xem `app/README.md`). Yêu cầu cố định: kết nối CSDL thật; CRUD gọi proc; cấu hình DB trong `.env`; README hướng dẫn chạy; tài khoản DB riêng, không dùng `sa`.
+- **Phối hợp:** một người làm toàn bộ app để tránh lệch stack; người viết báo cáo (8a) lấy ảnh minh chứng + mô tả luồng gọi proc từ người làm app; người kiểm thử (8b) chạy lại toàn bộ luồng trên DB sạch.
 - **Nộp:** source app + `README.md` + ảnh 3 màn hình.
 - **Hạn:** 20/11. **DoD:** chạy app theo README, thêm → sửa → xóa → tìm → xem dashboard đều hoạt động trên DB thật.
 
-### Việc 8 — Báo cáo + demo + nộp (chung)
+### Việc 8a — Báo cáo + slide + tổng hợp nộp
 
+- **Người: Nguyễn Trương Đăng Quang.**
 - **Báo cáo theo mẫu BTL2:** 1) Tạo bảng & dữ liệu (DDL, ảnh, số rows); 2) Trigger/thủ tục/hàm (nêu ràng buộc, DML ảnh hưởng, code, kết quả test); 3) Ứng dụng (ảnh 3 màn hình, luồng gọi proc); phụ lục phân công + test case.
 - **Slide 10–12 trang** + **video demo 3–5 phút** (dự phòng khi demo trực tiếp lỗi).
+- **Tổng hợp đầu vào:** nhận ảnh + mô tả luồng từ Phạm Nhật Quang (việc 7) và bảng đối chiếu + log test từ Phan Anh Khoa (việc 8b), ghép thành quyển + phụ lục.
 - **Nộp:** PDF + script SQL + source + link demo vào **group Zalo của nhóm**; nhóm trưởng tổng hợp nộp LMS; in quyển theo yêu cầu.
 - **Hạn:** 22/11. **DoD:** mở PDF đủ mục, link demo chạy được, cả nhóm trả lời được câu hỏi chéo.
 
+### Việc 8b — Kiểm thử & QA toàn bộ
+
+- **Người: Phan Anh Khoa.**
+- **Dựng DB sạch** từ `01` → `08`, chạy lại toàn bộ test: 2.1 (16 ca), 2.2.1 (11), 2.2.2 (13 + 11), 2.3 (3), 2.4 (14), app (39).
+- **Bảng đối chiếu đề bài ↔ file ↔ bằng chứng** cho từng mục 1.1 → 3.3, để không mục nào thiếu ảnh/log.
+- **Review chéo** toàn bộ PR của nhóm; giữ **checklist trước demo** ở mục 5.
+- **Nộp:** log/ảnh kết quả + bảng đối chiếu, giao cho người viết báo cáo (8a).
+- **Hạn:** 22/11. **DoD:** mọi mục của đề đều có bằng chứng chạy lại được trên DB sạch.
+
 ## 4. Quy tắc làm việc + nộp bài
 
-- **Repo Git:** `btl2-hcsdl`; nhánh `feat/<việc>-<tên>`; commit message `[2.1] validate trùng lịch`; merge qua PR, 1 người review.
+- **Repo Git:** `travel-booking-management-system`; nhánh `feat/<việc>-<tên>`; commit message `[2.1] validate trùng lịch`; merge qua PR, 1 người review.
 - **Không sửa file người khác** khi chưa báo; mọi thay đổi schema phải thông báo nhóm chat vì ảnh hưởng cả nhóm.
 - **File naming:** `BTL2-<số việc>-<nội dung>-<tên>.<ext>`; SQL đặt trong `sql/`, test trong `tests/`, app trong `app/`.
 - **Nộp:** gửi file/link vào **group Zalo của nhóm** (ghim tin nhắn); nhóm trưởng tổng hợp nộp LMS. Bản sơ bộ gửi Zalo trước buổi thực hành 5.

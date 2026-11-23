@@ -1,7 +1,7 @@
 # BTL2 — Kế hoạch thực hiện
 
 > **Nguồn yêu cầu:** [[Mô tả BTL2.pdf]] (cùng folder). BTL2 nối tiếp BTL1 — dùng đúng lược đồ đã thiết kế và ánh xạ ở [[BTL1 - Kế hoạch thực hiện]].
-> **Nhóm 5 người.** **DBMS đã chốt: MS SQL Server.** **Stack ứng dụng (phần 3) chưa chốt** — 3 người nhận việc 7 (Nguyễn Trương Đăng Quang, Phan Anh Khoa, Phạm Nhật Quang) sẽ đề xuất và chốt. Kế hoạch dùng cú pháp T-SQL.
+> **Nhóm 5 người.** **DBMS đã chốt: MS SQL Server.** **Stack ứng dụng (phần 3): Flask 3 + `pymssql`** — người nhận việc 7 đề xuất, cả nhóm chốt ở kickoff. Kế hoạch dùng cú pháp T-SQL.
 > **Deadline LMS:** CN **23/11/2025** — **đã chốt**. Mốc nội bộ: gửi group Zalo xong **22/11**, nộp LMS **23/11**; không có tuần đệm.
 > **Nộp nhóm:** mọi sản phẩm gửi vào **group Zalo của nhóm**; nhóm trưởng tổng hợp và nộp LMS theo đề.
 
@@ -72,7 +72,7 @@ Danh sách bảng dự kiến (theo lược đồ BTL1): `USERS`, `GUEST`, `HOST
 | --- | --- | --- | --- |
 | **1. Nền CSDL** | 10–13/11 | Chốt lược đồ BTL1; **chốt stack app** (DBMS đã chốt MS SQL Server); **Đỗ Lê Chí Kiên + Lê Thế Nguyên** viết DDL 15+ bảng + CHECK/FK và seed ≥ 5 hàng/bảng; tạo repo | **13/11:** DB chạy sạch từ script, đếm đủ rows |
 | **2. SQL logic** | 13–16/11 | 3 proc CRUD; 2 trigger; 2 proc truy vấn; 2 hàm; bộ test case | **16/11:** toàn bộ phần 2 chạy + test pass; có bản sơ bộ cho buổi thực hành 5 |
-| **3. Ứng dụng** | 15–20/11 | **3 người** làm 3 màn hình app (stack chốt ở kickoff), kết nối CSDL, gọi proc, validate + báo lỗi | **20/11:** demo được luồng thêm → sửa → xóa → tìm → xem doanh thu |
+| **3. Ứng dụng** | 15–20/11 | **1 người** làm 3 màn hình app (Flask 3 + `pymssql`), kết nối CSDL, gọi proc, validate + báo lỗi | **20/11:** demo được luồng thêm → sửa → xóa → tìm → xem doanh thu |
 | **4. Báo cáo & nộp** | 20–22/11 | Ảnh demo, quyển báo cáo theo mẫu, slide, video dự phòng, gửi group Zalo | **22/11:** PDF + script + link demo đã gửi Zalo; nhóm trưởng nộp LMS trước 23/11 |
 
 > **Mốc chết:** 13/11 (DDL), 16/11 (SQL), 20/11 (app), 22/11 (gửi Zalo), **23/11 (nộp LMS)**. Không có tuần đệm — trễ là mất điểm.
@@ -87,7 +87,7 @@ Danh sách bảng dự kiến (theo lược đồ BTL1): `USERS`, `GUEST`, `HOST
 4. **[TRIGGER DX] Trigger thuộc tính dẫn xuất (2.2.2 — 0.5đ) — chọn thuộc tính.** **Nguyễn Trương Đăng Quang**. Đề xuất: `total_amount`. Tính từ dữ liệu gốc; xử lý đủ DML. *Giao: `05_trigger_danxuat.sql`.*
 5. **[QUERY PROC] 2 thủ tục truy vấn (2.3 — 1đ).** **Đỗ Lê Chí Kiên**. Danh sách booking + doanh thu; tham số WHERE/HAVING. *Giao: `06_query_procs.sql`.*
 6. **[FUNCTION] 2 hàm (2.4 — 1đ).** **Phan Anh Khoa**. `fn_GuestTier`, `fn_CancelRefund`; IF/LOOP + con trỏ + validate. *Giao: `07_functions.sql`.*
-7. **[APP — việc phụ, 3 người] 3 màn hình (3.1–3.3 — 3đ).** **Nguyễn Trương Đăng Quang + Phan Anh Khoa + Phạm Nhật Quang**. Form CRUD, danh sách, dashboard; gọi proc/hàm; validate + báo lỗi. Stack và cách chia vai trò do 3 người này tự chốt. *Giao: source + README chạy.*
+7. **[APP — việc phụ, 1 người] 3 màn hình (3.1–3.3 — 3đ).** **Phạm Nhật Quang**. Form CRUD, danh sách, dashboard; gọi proc/hàm; validate + báo lỗi. Stack do người nhận việc đề xuất và cả nhóm chốt. *Giao: source + README chạy.*
 8. **[CHUNG] Báo cáo + demo + nộp.** Cả nhóm; nhóm trưởng tổng hợp.
 
 ### So sánh 2 việc phụ & cơ sở chọn số người
@@ -99,10 +99,10 @@ Danh sách bảng dự kiến (theo lược đồ BTL1): `USERS`, `GUEST`, `HOST
 | Tính chất | Tuần tự; schema là nguồn sự thật, seed phụ thuộc schema | Song song theo màn hình; tích hợp cuối là điểm nghẽn |
 | Kỹ năng | SQL DDL, CHECK/FK, đọc lược đồ BTL1 | Backend + frontend + driver CSDL + UX |
 | Rủi ro chính | Schema trễ → block toàn bộ phần 2 | Tích hợp trễ → mất 3đ phần app |
-| Cách chia | 1 người schema / 1 người seed + test | **Đề xuất:** 1 backend / 1 UI / 1 integration + test (3 bạn tự chốt) |
-| **Số người** | **2** | **3** |
+| Cách chia | 1 người schema / 1 người seed + test | 1 người làm cả 3 màn hình trên cùng một stack |
+| **Số người** | **2** | **1** |
 
-> Tỷ lệ khối lượng ~**1 : 1,5** → chia **2 : 3** là cân bằng. Nếu chỉ 1 người làm DDL, người đó vừa ôm 22–28 giờ vừa làm đầu việc phần 2 dễ quá tải và thành điểm nghẽn; nếu 4 người làm app thì chồng chéo, lợi ích tăng không đáng kể.
+> Tỷ lệ khối lượng ~**1 : 1,5**. Việc 1 tách 2 người vì schema và seed chạy tuần tự, chia được rõ ràng; việc 7 gọn trong một stack nên **1 người** làm cả 3 màn hình để thống nhất giao diện, giảm công tích hợp cuối.
 
 ## 5. Rủi ro & phương án
 

@@ -19,7 +19,7 @@ Hệ thống quản lý đặt phòng du lịch (tham khảo Booking.com), tiế
 | 4 | Trigger thuộc tính dẫn xuất (2.2.2) | `sql/05_trigger_danxuat.sql` | Nguyễn Trương Đăng Quang | ✅ Đã tích hợp — `TOTAL_AMOUNT` (11/11) + 3 cột rating (13/13) |
 | 5 | 2 thủ tục truy vấn (2.3) | `sql/06_query_procs.sql` | Đỗ Lê Chí Kiên | ✅ Đã tích hợp — 3/3 test tự động PASS |
 | 6 | 2 hàm (2.4) | `sql/07_functions.sql` | Phan Anh Khoa | ✅ Đã tích hợp — 14/14 test PASS |
-| 7 | 3 màn hình ứng dụng (3.1–3.3) | `app/` + `sql/08_app_login.sql` | Quang, Khoa, Quang | ✅ Đã tích hợp — 39/39 test PASS |
+| 7 | 3 màn hình ứng dụng (3.1–3.3) | `app/` + `sql/08_app_login.sql` | Phạm Nhật Quang | ✅ Đã tích hợp — 39/39 test PASS |
 
 > Trigger 2.2.1 đặt trên `BOOKING_ROOM_TYPE` (không phải `BOOKING`), kiểm tra sức chứa theo **hạng phòng + khoảng ngày**, nên không còn chặn nhầm đơn khác hạng và không phá `SCOPE_IDENTITY()` của `sp_Booking_Insert`. Issue #1 đã được xử lý.
 
@@ -420,9 +420,9 @@ Theo `docs/de-bai/BTL2 - Phân công công việc.md`:
 
 - **Lê Thế Nguyên** — việc 3 (trigger ràng buộc) + việc 1 (seed/test/review)
 - **Đỗ Lê Chí Kiên** — việc 5 (2 thủ tục truy vấn) + việc 1 (schema/constraints)
-- **Phạm Nhật Quang** — việc 2 (CRUD) + việc 7 (app)
-- **Phan Anh Khoa** — việc 6 (2 hàm) + việc 7 (app)
-- **Nguyễn Trương Đăng Quang** — việc 4 (trigger dẫn xuất) + việc 7 (app)
+- **Phạm Nhật Quang** — việc 2 (CRUD) + việc 7 (toàn bộ app 3.1–3.3)
+- **Phan Anh Khoa** — việc 6 (2 hàm) + việc 8b (kiểm thử & QA)
+- **Nguyễn Trương Đăng Quang** — việc 4 (trigger dẫn xuất) + việc 8a (báo cáo, slide, tổng hợp nộp)
 
 ## Quy ước Git
 
