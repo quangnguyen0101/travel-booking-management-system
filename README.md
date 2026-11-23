@@ -59,7 +59,36 @@ travel-booking-management-system/
 
 ## Cách chạy
 
-### Cách 1 — SSMS
+### Chạy nhanh (Linux/Docker) — 6 bước
+
+```bash
+cd travel-booking-management-system
+
+# 1. Bật SQL Server (lần đầu tạo container: xem "Cách 2" bên dưới)
+docker start btl2-mssql
+
+# 2. Chờ server sẵn sàng (~20-30 giây)
+for i in $(seq 1 60); do
+  docker exec btl2-mssql /opt/mssql-tools18/bin/sqlcmd \
+    -S localhost -U sa -P 'Btl2@Nhom5!2026' -C -I -Q "SELECT 1" >/dev/null 2>&1 \
+    && { echo READY; break; }; sleep 2
+done
+
+# 3. Nạp CSDL — chỉ lần đầu, hoặc khi muốn reset (xem "Cách 2")
+# 4. Cấu hình app — chỉ lần đầu
+cp app/.env.example app/.env        # rồi đặt DB_PORT=14333 khi dùng Docker
+# 5. Cài thư viện — chỉ lần đầu
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+# 6. Chạy app
+.venv/bin/python app/app.py         # mở http://localhost:5000
+```
+
+- **Bước 3, 4, 5 chỉ làm một lần.** Những lần sau chỉ cần bước 1 → 2 → 6.
+- Kiểm chứng: `.venv/bin/python app/test_app.py` — cần **39/39 PASS**.
+- App chạy foreground: `Ctrl+C` để dừng, tắt terminal là app dừng theo.
+- Lỗi thường gặp: xem [Sự cố thường gặp](#sự-cố-thường-gặp).
+
+### Cách 1 — SSMS (Windows)
 
 Mở lần lượt từng file bằng **File → Open**, bấm F5 theo đúng thứ tự:
 
@@ -81,29 +110,67 @@ Mở lần lượt từng file bằng **File → Open**, bấm F5 theo đúng th
 
 `01_schema.sql` và `02_seed.sql` đều có chốt an toàn: nếu database đã có bảng/dữ liệu thì dừng, không ghi đè.
 
-### Cách 2 — sqlcmd (Docker/CI)
+### Cách 2 — sqlcmd trong Docker
+
+Chạy tại **thư mục gốc repo**. Container mount repo vào `/repo` (chỉ đọc) để `sqlcmd` đọc được file script.
 
 ```bash
+# Tạo container
 docker run -d --name btl2-mssql \
   -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD='Btl2@Nhom5!2026' \
-  -p 14333:1433 mcr.microsoft.com/mssql/server:2025-latest
+  -p 14333:1433 \
+  -v "$PWD:/repo:ro" \
+  mcr.microsoft.com/mssql/server:2025-latest
 
-SQLCMD="/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P Btl2@Nhom5!2026 -C -I -f 65001"
-docker exec btl2-mssql bash -lc "$SQLCMD -i /tmp/repo/sql/01_schema.sql"
-# ... lặp lại theo thứ tự trên
+# Chờ server sẵn sàng (SQL Server khởi động chậm, script đầu sẽ fail nếu chạy ngay)
+for i in $(seq 1 60); do
+  docker exec btl2-mssql /opt/mssql-tools18/bin/sqlcmd \
+    -S localhost -U sa -P 'Btl2@Nhom5!2026' -C -I -Q "SELECT 1" >/dev/null 2>&1 \
+    && { echo READY; break; }; sleep 2
+done
+
+# Chạy lần lượt 01 -> 08, dừng ngay khi một file lỗi
+SQLCMD="/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P Btl2@Nhom5!2026 -C -I -f 65001 -b"
+for f in 01_schema 02_seed 03_crud 04_trigger_rangbuoc 05_trigger_danxuat \
+         06_query_procs 07_functions 08_app_login; do
+  echo "== $f =="
+  docker exec btl2-mssql bash -lc "$SQLCMD -i /repo/sql/$f.sql" || { echo "DỪNG: $f"; break; }
+done
 ```
 
-- `-I`: bật `QUOTED_IDENTIFIER` (bắt buộc với filtered index/trigger).
-- `-f 65001`: đọc file UTF-8, giữ đúng tiếng Việt.
+| Flag | Vì sao cần |
+| --- | --- |
+| `-I` | bật `QUOTED_IDENTIFIER` — bắt buộc với trigger và filtered index |
+| `-f 65001` | đọc file UTF-8, giữ đúng tiếng Việt |
+| `-b` | `sqlcmd` trả mã lỗi, để vòng `for` dừng đúng file hỏng |
+
+Nếu container đã tạo **không có** `-v`, copy script vào rồi chạy như trên. Container chạy bằng user `mssql` nên dùng `/tmp`, không tạo được thư mục ở `/`:
+
+```bash
+docker exec btl2-mssql mkdir -p /tmp/repo
+docker cp sql btl2-mssql:/tmp/repo/sql
+docker cp tests btl2-mssql:/tmp/repo/tests
+```
+
+Khi đó thay `/repo/` trong các lệnh bên trên bằng `/tmp/repo/`.
+
+Chạy test kiểm tra (tuỳ chọn, cùng cách gọi):
+
+```bash
+SQLCMD="/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P Btl2@Nhom5!2026 -C -I -f 65001 -b"
+for f in 01_schema_check 02_test_constraints 2.1-testcases; do
+  docker exec btl2-mssql bash -lc "$SQLCMD -i /repo/tests/$f.sql"
+done
+```
 
 ### Cách 3 — chạy ứng dụng
 
-Tạo venv ở **thư mục gốc repo**, không cần `cd app`:
+Yêu cầu **Python 3.12+**. Tạo venv ở **thư mục gốc repo**, không cần `cd app`:
 
 **Windows**
 
 ```powershell
-py -3.12 -m venv .venv
+py -3 -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
 copy app\.env.example app\.env
 .venv\Scripts\python app\app.py
@@ -112,13 +179,29 @@ copy app\.env.example app\.env
 **Linux**
 
 ```bash
-python3.12 -m venv .venv
+python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 cp app/.env.example app/.env
 .venv/bin/python app/app.py
 ```
 
-Sửa `app/.env` cho khớp máy (`DB_PORT=14333` nếu SQL Server chạy Docker, `1433` nếu cài native), rồi mở <http://localhost:5000>. Chi tiết cấu hình và các giới hạn xem `app/README.md`.
+Rồi mở <http://localhost:5000>. Chi tiết cấu hình và các giới hạn xem `app/README.md`.
+
+**Cấu hình `app/.env`** — sửa **một lần**, file nằm trên đĩa và bị gitignore nên `git pull` không ghi đè:
+
+| Cách cài SQL Server | `DB_PORT` |
+| --- | --- |
+| Docker theo hướng dẫn này | `14333` |
+| Cài native trên máy (đã bật TCP/IP) | `1433` |
+
+Đổi mật khẩu `btl2_app` trong `sql/08_app_login.sql` thì sửa luôn `DB_PASSWORD` cho khớp.
+
+**Những lần chạy sau** chỉ cần 2 lệnh, không sửa gì thêm:
+
+```bash
+docker start btl2-mssql
+.venv/bin/python app/app.py
+```
 
 > Nếu repo nằm trong Google Drive/FUSE trên Linux, `python3 -m venv .venv` có thể lỗi `lib64` do filesystem không hỗ trợ symlink. Khi đó tạo venv ở ổ local:
 > `python3 -m venv ~/.venvs/btl2 && ~/.venvs/btl2/bin/pip install -r requirements.txt`
@@ -131,6 +214,19 @@ USE master;
 ALTER DATABASE BTL2_Booking_Nhom5 SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
 DROP DATABASE BTL2_Booking_Nhom5;
 ```
+
+## Sự cố thường gặp
+
+| Triệu chứng | Nguyên nhân | Cách sửa |
+| --- | --- | --- |
+| App hiện trang 503, log có `Unable to connect: TDS server is unavailable` | `app/.env` để `DB_PORT=1433` nhưng Docker map `14333` | sửa `DB_PORT=14333` cho khớp cổng container |
+| `Login failed for user 'btl2_app'` | chưa chạy `sql/08_app_login.sql` | chạy file 08 |
+| `Cannot open database "BTL2_Booking_Nhom5"` | chưa nạp `sql/01_schema.sql` | chạy 01 → 08 theo thứ tự |
+| `port is already allocated` khi `docker run` | container cũ vẫn còn | `docker ps`, rồi `docker start` container cũ thay vì tạo mới |
+| `sqlcmd: Error: ... No such file or directory` | container chưa mount repo | thêm `-v "$PWD:/repo:ro"`, hoặc `docker cp` vào `/tmp/repo` (xem Cách 2) |
+| Tiếng Việt trong script bị mất dấu | thiếu `-f 65001` | thêm `-f 65001` khi gọi `sqlcmd` |
+| `docker rm` xong mất sạch dữ liệu | container không có volume | không mất gì thật: nạp lại 01 → 08 là xong (~30 giây) |
+| Port 5000 đã bị chiếm | app cũ còn chạy | `Ctrl+C` ở terminal cũ, hoặc `pkill -f app/app.py` |
 
 ## Quy ước dữ liệu
 
