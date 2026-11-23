@@ -59,7 +59,19 @@ travel-booking-management-system/
 
 ## Cách chạy
 
-### Chạy nhanh (Linux/Docker) — 6 bước
+Có 2 cách dựng CSDL; app Flask luôn chạy native bằng Python, không đóng gói Docker.
+
+| | **Cách A — SQL Server native** | **Cách B — Docker** |
+| --- | --- | --- |
+| Cài gì | SQL Server 2022 Developer/Express + SSMS | Docker Desktop |
+| Cổng | `1433` | `14333` |
+| Chạy script SQL | SSMS (F5 từng file) | PowerShell + `sqlcmd` trong container, hoặc SSMS nối `localhost,14333` |
+| `DB_PORT` trong `.env` | `1433` | `14333` |
+| Dễ vướng | phải bật Mixed Mode + TCP/IP | phải bật Docker Desktop trước |
+
+Bên dưới là **Cách B** chi tiết cho Linux/macOS và Windows, rồi **Cách A** dùng SSMS, cuối cùng là cách chạy app.
+
+### Chạy nhanh (Linux/macOS + Docker) — 6 bước
 
 ```bash
 cd travel-booking-management-system
@@ -88,7 +100,57 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 - App chạy foreground: `Ctrl+C` để dừng, tắt terminal là app dừng theo.
 - Lỗi thường gặp: xem [Sự cố thường gặp](#sự-cố-thường-gặp).
 
+### Chạy nhanh (Windows + Docker) — PowerShell
+
+Chạy tại **thư mục gốc repo**. Dùng PowerShell, không dùng cmd.
+
+```powershell
+# 1. Tạo container (mount repo vào /repo)
+docker run -d --name btl2-mssql `
+  -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD='Btl2@Nhom5!2026' `
+  -p 14333:1433 `
+  -v "${PWD}:/repo:ro" `
+  mcr.microsoft.com/mssql/server:2025-latest
+
+# 2. Chờ server sẵn sàng (~20-30 giây)
+for ($i = 1; $i -le 60; $i++) {
+  docker exec btl2-mssql /opt/mssql-tools18/bin/sqlcmd `
+    -S localhost -U sa -P 'Btl2@Nhom5!2026' -C -I -Q "SELECT 1" *> $null
+  if ($LASTEXITCODE -eq 0) { Write-Host "READY"; break }
+  Start-Sleep -Seconds 2
+}
+
+# 3. Nạp CSDL 01 -> 08
+$SQLCMD = "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P Btl2@Nhom5!2026 -C -I -f 65001 -b"
+foreach ($f in '01_schema','02_seed','03_crud','04_trigger_rangbuoc',
+               '05_trigger_danxuat','06_query_procs','07_functions','08_app_login') {
+  Write-Host "== $f =="
+  docker exec btl2-mssql bash -lc "$SQLCMD -i /repo/sql/$f.sql"
+  if ($LASTEXITCODE -ne 0) { Write-Host "DUNG: $f"; break }
+}
+
+# 4. Cấu hình app (DB_PORT=14333)
+copy app\.env.example app\.env
+
+# 5. Cài thư viện
+py -3 -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+
+# 6. Chạy app
+.venv\Scripts\python app\app.py     # mở http://localhost:5000
+```
+
+- Những lần sau chỉ cần `docker start btl2-mssql` rồi `.venv\Scripts\python app\app.py`.
+- Ngại gõ PowerShell thì mở **SSMS nối `localhost,14333`** rồi bấm F5 từng file như Cách 1 — kết quả y hệt.
+- `pymssql` 2.4.6 có wheel sẵn cho Windows (Python 3.9-3.15, x64 và ARM64) nên `pip install` không cần compiler C++.
+
 ### Cách 1 — SSMS (Windows)
+
+**Chuẩn bị server** (chỉ lần đầu, bắt buộc để app đăng nhập được):
+
+- **Mixed Mode:** chuột phải server → *Properties* → *Security* → chọn *SQL Server and Windows Authentication mode* → restart service.
+- **TCP/IP:** *SQL Server Configuration Manager* → *SQL Server Network Configuration* → *Protocols for MSSQLSERVER* (hoặc SQLEXPRESS) → *TCP/IP* = Enabled.
+- **SQLEXPRESS:** vào *IP Addresses* → *IPAll*, xóa *TCP Dynamic Ports*, đặt *TCP Port* = `1433` → restart service. App nối bằng `DB_SERVER=localhost` + `DB_PORT`, không dùng named instance.
 
 Mở lần lượt từng file bằng **File → Open**, bấm F5 theo đúng thứ tự:
 
@@ -112,7 +174,7 @@ Mở lần lượt từng file bằng **File → Open**, bấm F5 theo đúng th
 
 ### Cách 2 — sqlcmd trong Docker
 
-Chạy tại **thư mục gốc repo**. Container mount repo vào `/repo` (chỉ đọc) để `sqlcmd` đọc được file script.
+Chạy tại **thư mục gốc repo**. Container mount repo vào `/repo` (chỉ đọc) để `sqlcmd` đọc được file script. Các lệnh dưới dùng bash; trên Windows xem mục **Chạy nhanh (Windows + Docker)** ở trên, hoặc mở SSMS nối `localhost,14333` rồi bấm F5 từng file như Cách 1.
 
 ```bash
 # Tạo container
@@ -227,6 +289,9 @@ DROP DATABASE BTL2_Booking_Nhom5;
 | Tiếng Việt trong script bị mất dấu | thiếu `-f 65001` | thêm `-f 65001` khi gọi `sqlcmd` |
 | `docker rm` xong mất sạch dữ liệu | container không có volume | không mất gì thật: nạp lại 01 → 08 là xong (~30 giây) |
 | Port 5000 đã bị chiếm | app cũ còn chạy | `Ctrl+C` ở terminal cũ, hoặc `pkill -f app/app.py` |
+| `Login failed for user 'sa'` khi cài native | chưa bật Mixed Mode authentication | bật *SQL Server and Windows Authentication mode* rồi restart service |
+| `TCP Provider: No connection could be made` | chưa bật TCP/IP, hoặc SQLEXPRESS đang dùng dynamic port | bật TCP/IP; với SQLEXPRESS đặt TCP Port cố định `1433` |
+| `Cannot connect to the Docker daemon` | Docker Desktop chưa chạy | mở Docker Desktop, chờ icon chuyển xanh |
 
 ## Quy ước dữ liệu
 
